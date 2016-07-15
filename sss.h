@@ -26,28 +26,28 @@ struct ScatteringProfileDirectional
 	// {
 	float computeRd(float alpha_prime_c)
 	{
-	   float _4A = (1.0f + _3C2) / C_phi;
-	   float sigma_tr_D = sqrtf((1.0f-alpha_prime_c) * (2.0f-alpha_prime_c) / 3.0f);
-	   float ex = expf(-_4A * sigma_tr_D);
-	   return 0.5f * VR::sqr(alpha_prime_c)
-				   * expf(-sqrtf(3.0f*(1.0f - alpha_prime_c)/(2.0f-alpha_prime_c))) 
-				   * (C_E * (1.0f+ex) + C_phi/sigma_tr_D * (1.0f-ex));
+		float _4A = (1.0f + _3C2) / C_phi;
+		float sigma_tr_D = sqrtf((1.0f-alpha_prime_c) * (2.0f-alpha_prime_c) / 3.0f);
+		float ex = expf(-_4A * sigma_tr_D);
+		return 0.5f * VR::sqr(alpha_prime_c)
+					* expf(-sqrtf(3.0f*(1.0f - alpha_prime_c)/(2.0f-alpha_prime_c))) 
+					* (C_E * (1.0f+ex) + C_phi/sigma_tr_D * (1.0f-ex));
 	}
 
 	float computeAlphaPrime(float rd)
 	{
-	   int i, niter = 50;
-	   float x0 = 0, x1 = 1;
-	   float xmid, fmid;
+		int i, niter = 50;
+		float x0 = 0, x1 = 1;
+		float xmid, fmid;
 
-	   for (i=0; i < niter; ++i)
-	   {
-		  xmid = 0.5f * (x0+x1);
-		  fmid = computeRd(xmid);
-		  fmid < rd ? x0 = xmid : x1 = xmid;
-	   }
+		for (i=0; i < niter; ++i)
+		{
+			xmid = 0.5f * (x0+x1);
+			fmid = computeRd(xmid);
+			fmid < rd ? x0 = xmid : x1 = xmid;
+		}
 
-	   return xmid;
+		return xmid;
 	}
 	// }
 
