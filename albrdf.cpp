@@ -23,6 +23,10 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	params.diffuse*=invTransp;
 	params.reflection*=invTransp;
 
+	// If GI or glossy ray, disable SSS
+	if (rc.rayparams.diffuseLevel>0 || (rc.rayparams.totalLevel>1 && 0!=(rc.rayparams.rayType & RT_GLOSSY)))
+		params.sssMix=0.0f;
+
 	const VR::VRaySequenceData &sdata=rc.vray->getSequenceData();
 
 	// Set the normals to use for lighting

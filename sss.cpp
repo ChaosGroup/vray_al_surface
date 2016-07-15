@@ -271,19 +271,19 @@ void alsIrradiateSample(
 	VR::VRayContext &nrc=rc.newSpawnContext(0, VR::Color(1.0f, 1.0f, 1.0f), VR::RT_INDIRECT | VR::RT_ENVIRONMENT, rc.rayresult.gnormal);
 
 	for (int i=0; i<1; i++)
-    {
+	{
 		float samples[2];
 		samples[0]=nrc.getDMCValue();
 		samples[1]=nrc.getDMCValue();
 
-        float stheta = sqrtf(float(samples[0]));
-        float phi = float(VR::pi()*2.0f * samples[1]);
+		float stheta = sqrtf(float(samples[0]));
+		float phi = float(VR::pi()*2.0f * samples[1]);
 
 		VR::Vector dir;
-        dir.x = stheta * cosf(phi);
-        dir.y = stheta * sinf(phi);
+		dir.x = stheta * cosf(phi);
+		dir.y = stheta * sinf(phi);
 		float cs=sqrtf(VR::Max(0.0f, 1.0f - float(samples[0])));
-        dir.z = cs;
+		dir.z = cs;
         
 		dir=dir.x*U+dir.y*V+dir.z*rc.rayresult.normal;
 
@@ -292,25 +292,25 @@ void alsIrradiateSample(
 
 		VR::Color giColor=nrc.traceCurrentRay();
 
-        VR::Color f;
-        if (directional)
-        {
-            VR::Color R(0.0f, 0.0f, 0.0f);
-            for (int c = 0; c < dmd->numComponents; ++c)
-            {
+		VR::Color f;
+		if (directional)
+		{
+			VR::Color R(0.0f, 0.0f, 0.0f);
+			for (int c = 0; c < dmd->numComponents; ++c)
+			{
 				R += directionalDipole(rc.rayresult.wpoint, rc.rayresult.normal, dmd->Po, dmd->No, dir, dmd->wo, dmd->sp[c]) * dmd->weights[c];
-            }
-            f = R;
-            result_indirect += giColor * R;
+			}
+			f = R;
+			result_indirect += giColor * R;
 			vassert(VR::fastfinite(result_indirect.sum()));
-        }
-        else
-        {
-            f = Rnond;
-            result_indirect += giColor * Rnond;
+		}
+		else
+		{
+			f = Rnond;
+			result_indirect += giColor * Rnond;
 			vassert(VR::fastfinite(result_indirect.sum()));
-        }
-    }
+		}
+	}
 	nrc.releaseContext();
 
     // TODO: this is guaranteed to be 1 in every case, right?
