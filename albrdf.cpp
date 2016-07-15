@@ -197,7 +197,7 @@ ValidType MyBaseBSDF::setupContext(const VRayContext &rc, VRayContext &nrc, floa
 		Vector dir=getGlossyReflectionDir(uc, BRDFSampler::getDMCParam(nrc, 1), rc.rayparams.viewDir, nrc.rayparams.rayProbability);
 
 		// If this is below the surface, ignore
-		if (dir*gnormal<0.0f) return false;
+		if (dotf(dir, gnormal)<0.0f) return false;
 
 		// Set ray derivatives
 		VR::getReflectDerivs(rc.rayparams.viewDir, dir, rc.rayparams.dDdx, rc.rayparams.dDdy, nrc.rayparams.dDdx, nrc.rayparams.dDdy);
