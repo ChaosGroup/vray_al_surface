@@ -116,76 +116,97 @@ ClassDesc* GetSkeletonMtlDesc() {return &SkelMtlCD;}
 static int numID=100;
 int ctrlID(void) { return numID++; }
 
-static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("SkeletonMaterial parameters"),  0, &SkelMtlCD, P_AUTO_CONSTRUCT + P_AUTO_UI, 0, 
-	//rollout
-	IDD_SKELETON_MATERIAL, IDS_PARAMETERS, 0, 0, NULL, 
+static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0, &SkelMtlCD, P_AUTO_CONSTRUCT + P_AUTO_UI + P_MULTIMAP, 0, 
+	//rollouts
+	8,
+	map_basic, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_diffuse, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_sss1, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_sss2, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_sss3, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_reflect1, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_reflect2, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_textures, 0, IDS_PARAMETERS, 0, 0, NULL,
+
 	// params
-	mtl_diffuse, _FT("diffuse"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.5f, 0.5f, 0.5f),
-		p_ui, TYPE_COLORSWATCH, ctrlID(),
-	PB_END,
-	mtl_color, _FT("reflection"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.0f, 0.0f, 0.0f),
-		p_ui, TYPE_COLORSWATCH, ctrlID(),
-	PB_END,
-	mtl_glossiness, _FT("glossiness"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 0.5f,
-		p_range, 0.0f, 1.0f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
+	mtl_sssDensityScale, _FT("sss_density_scale"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.0f,
+		p_range, 1e-6f, 1e6f,
+		p_ui, map_basic, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	mtl_opacity, _FT("opacity"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(1.0f, 1.0f, 1.0f),
-		p_ui, TYPE_COLORSWATCH, ctrlID(),
+		p_ui, map_basic, TYPE_COLORSWATCH, ctrlID(),
+	PB_END,
+
+	mtl_diffuse, _FT("diffuse_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+		p_default, Color(0.5f, 0.5f, 0.5f),
+		p_ui, map_diffuse, TYPE_COLORSWATCH, ctrlID(),
+	PB_END,
+	mtl_diffuseStrength, _FT("diffuse_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.0f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	mtl_sssMix, _FT("sss_mix"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.0f,
 		p_range, 0.0f, 1.0f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
+		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
 
-	mtl_sssWeight1, _FT("sss_weight1"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 0.0f,
-		p_range, 0.0f, 1.0f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
+	mtl_color, _FT("reflection"), TYPE_RGBA, P_ANIMATABLE, 0,
+		p_default, Color(0.0f, 0.0f, 0.0f),
+		p_ui, map_reflect1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
+	mtl_glossiness, _FT("glossiness"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 0.5f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
+	PB_END,
+	
 	mtl_sssColor1, _FT("sss_color1"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.5f, 0.5f, 0.5f),
-		p_ui, TYPE_COLORSWATCH, ctrlID(),
+		p_default, Color(0.439f, 0.156f, 0.078f),
+		p_ui, map_sss1, TYPE_COLORSWATCH, ctrlID(),
+	PB_END,
+	mtl_sssWeight1, _FT("sss_weight1"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.0f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_sss1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	mtl_sssRadius1, _FT("sss_radius1"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 1.0f,
+		p_default, 1.5f,
 		p_range, 0.0f, 1e6f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
+		p_ui, map_sss1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 
-	mtl_sssWeight2, _FT("sss_weight2"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 0.0f,
-		p_range, 0.0f, 1.0f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
-	PB_END,
 	mtl_sssColor2, _FT("sss_color2"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.5f, 0.5f, 0.5f),
-		p_ui, TYPE_COLORSWATCH, ctrlID(),
+		p_default, Color(0.439f, 0.08f, 0.018f),
+		p_ui, map_sss2, TYPE_COLORSWATCH, ctrlID(),
+	PB_END,
+	mtl_sssWeight2, _FT("sss_weight2"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.0f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_sss2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	mtl_sssRadius2, _FT("sss_radius2"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 1.0f,
+		p_default, 4.0f,
 		p_range, 0.0f, 1e6f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
+		p_ui, map_sss2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
 
-	mtl_sssWeight3, _FT("sss_weight3"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 0.0f,
-		p_range, 0.0f, 1.0f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
-	PB_END,
 	mtl_sssColor3, _FT("sss_color3"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.5f, 0.5f, 0.5f),
-		p_ui, TYPE_COLORSWATCH, ctrlID(),
+		p_default, Color(0.523f, 0.637f, 0.667f),
+		p_ui, map_sss3, TYPE_COLORSWATCH, ctrlID(),
+	PB_END,
+	mtl_sssWeight3, _FT("sss_weight3"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.0f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	mtl_sssRadius3, _FT("sss_radius3"), TYPE_FLOAT, P_ANIMATABLE, 0,
-		p_default, 1.0f,
+		p_default, 0.75f,
 		p_range, 0.0f, 1e6f,
-		p_ui, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
+		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 PB_END
 );
@@ -196,7 +217,6 @@ PB_END
 
 class SkelMtlDlgProc : public ParamMap2UserDlgProc {
 public:
-	IParamMap *pmap;
 	SkeletonMaterial *sm;
 
 	SkelMtlDlgProc(void) { sm = NULL; }
@@ -221,33 +241,63 @@ public:
 static SkelMtlDlgProc dlgProc;
 static Pb2TemplateGenerator templateGenerator;
 
+struct ParamMapInfo {
+	const TCHAR *title;
+	int flags;
+};
+
+ParamMapInfo pmapInfo[NUM_PMAPS]={
+	{ _T("General parameters"), 0 },
+	{ _T("Diffuse"), 0 },
+	{ _T("SSS 1"), 0 },
+	{ _T("SSS 2"), 0 },
+	{ _T("SSS 3"), 0 },
+	{ _T("Reflection 1"), 0, },
+	{ _T("Reflection 2"), 0, },
+	{ _T("Textures"), APPENDROLL_CLOSED }
+};
+
 class SkelMtlParamDlg: public ParamDlg {
 public:
 	SkeletonMaterial *mtl;
 	IMtlParams *ip;
-	IParamMap2 *pmap;
+	IParamMap2 *pmaps[NUM_PMAPS];
 	
 	SkelMtlParamDlg(SkeletonMaterial *m, HWND hWnd, IMtlParams *i) {
 		mtl=m;
 		ip=i;
 		
-		DLGTEMPLATE* tmp=templateGenerator.GenerateTemplate(mtl->pblock, STR_DLGTITLE, 217);
-		pmap=CreateMParamMap2(mtl->pblock, ip, hInstance, hWnd, NULL, NULL, tmp, STR_DLGTITLE, 0, &dlgProc);
-		templateGenerator.ReleaseDlgTemplate(tmp);
+		DLGTEMPLATE* tmp=NULL;
+		
+		for (int i=0; i<NUM_PMAPS; i++) {
+			tmp=templateGenerator.GenerateTemplate(i, mtl->pblock, pmapInfo[i].title, 217);
+			pmaps[i]=CreateMParamMap2(i, mtl->pblock, ip, hInstance, hWnd, NULL, NULL, tmp, pmapInfo[i].title, pmapInfo[i].flags, NULL);
+			templateGenerator.ReleaseDlgTemplate(tmp);
+		}
 	}
 
-	void DeleteThis(void) {
-		if (pmap) DestroyMParamMap2(pmap);
-		pmap=NULL;
+	void DeleteThis(void) VRAY_OVERRIDE {
+		for (int i=0; i<NUM_PMAPS; i++) {
+			if (pmaps[i]) DestroyMParamMap2(pmaps[i]);
+			pmaps[i]=NULL;
+		}
 		delete this;
 	}
 	
-	Class_ID ClassID(void) { return MTL_CLASSID; }
-	void SetThing(ReferenceTarget *m) { mtl=(SkeletonMaterial*) m; pmap->SetParamBlock(mtl->pblock); }
-	ReferenceTarget* GetThing(void) { return mtl; }
-	void SetTime(TimeValue t) {}
-	void ReloadDialog(void) {}
-	void ActivateDlg(BOOL onOff) {}
+	Class_ID ClassID(void) VRAY_OVERRIDE { return MTL_CLASSID; }
+
+	void SetThing(ReferenceTarget *m) VRAY_OVERRIDE {
+		mtl=(SkeletonMaterial*) m;
+		for (int i=0; i<NUM_PMAPS; i++) {
+			if (pmaps[i])
+				pmaps[i]->SetParamBlock(mtl->pblock);
+		}
+	}
+	
+	ReferenceTarget* GetThing(void) VRAY_OVERRIDE { return mtl; }
+	void SetTime(TimeValue t) VRAY_OVERRIDE {}
+	void ReloadDialog(void) VRAY_OVERRIDE {}
+	void ActivateDlg(BOOL onOff) VRAY_OVERRIDE {}
 };
 
 /*===========================================================================*\
@@ -390,6 +440,9 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 		pblock->GetValue(mtl_sssWeight3, t, sssWeight3, ivalid);
 		pblock->GetValue(mtl_sssRadius3, t, sssRadius3, ivalid);
 		pblock->GetValue(mtl_sssColor3, t, sssColor3, ivalid);
+
+		pblock->GetValue(mtl_sssDensityScale, t, sssDensityScale, ivalid);
+		pblock->GetValue(mtl_diffuseStrength, t, diffuseStrength, ivalid);
 	}
 
 	valid &= ivalid;

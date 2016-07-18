@@ -76,7 +76,7 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 
 	VR::ALBSDFParams &params=bsdf->getParams();
 
-	params.diffuse=toColor(diffuse);
+	params.diffuse=toColor(diffuse)*diffuseStrength;
 	params.reflection=toColor(reflect);
 	params.reflectionGlossiness=glossiness;
 	params.transparency=toColor(opacity).whiteComplement();
@@ -97,7 +97,7 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	params.sssColor3=toColor(sssColor3);
 	params.sssRadius3=sssRadius3;
 
-	params.sssDensityScale=1.0f;
+	params.sssDensityScale=sssDensityScale;
 
 	bsdf->init(rc);
 	return bsdf;

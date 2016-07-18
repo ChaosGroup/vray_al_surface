@@ -33,6 +33,9 @@ extern ClassDesc* GetSkeletonMtlDesc();
 // Paramblock2 name
 enum { mtl_params, }; 
 
+// Parameter map IDs
+enum { map_basic, map_diffuse, map_sss1, map_sss2, map_sss3, map_reflect1, map_reflect2, map_textures, NUM_PMAPS };
+
 // Paramblock2 parameter list
 enum {
 	mtl_glossiness,
@@ -53,6 +56,9 @@ enum {
 	mtl_sssWeight3,
 	mtl_sssColor3,
 	mtl_sssRadius3,
+
+	mtl_diffuseStrength,
+	mtl_sssDensityScale,
 };
 
 /*===========================================================================*\
@@ -83,8 +89,10 @@ public:
 	float glossiness;
 	Color reflect, diffuse;
 	Color opacity;
+	float diffuseStrength;
 
 	float sssMix;
+	float sssDensityScale;
 	float sssRadius1, sssRadius2, sssRadius3;
 	float sssWeight1, sssWeight2, sssWeight3;
 	Color sssColor1, sssColor2, sssColor3;
