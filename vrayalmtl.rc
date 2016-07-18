@@ -69,8 +69,8 @@ END
 // Bitmap
 //
 
-bm_MTL                  BITMAP  MOVEABLE PURE   "..\\common\\bmp00001.bmp"
-bm_MTLMASK              BITMAP  MOVEABLE PURE   "..\\common\\bmp00002.bmp"
+bm_MTL                  BITMAP  MOVEABLE PURE   "M:\\vraysdk\\samples\\3dsmax_plugins\\common\\bmp00001.bmp"
+bm_MTLMASK              BITMAP  MOVEABLE PURE   "M:\\vraysdk\\samples\\3dsmax_plugins\\common\\bmp00002.bmp"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

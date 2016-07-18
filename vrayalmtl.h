@@ -165,12 +165,14 @@ public:
 	}
 
 	// From VRenderMtl
-	void renderBegin(TimeValue t, VR::VRayRenderer *vray);
-	void renderEnd(VR::VRayRenderer *vray);
-	VR::BSDFSampler* newBSDF(const VR::VRayContext &rc, VR::VRenderMtlFlags flags);
-	void deleteBSDF(const VR::VRayContext &rc, VR::BSDFSampler *bsdf);
-	void addRenderChannel(int index);
-	VR::VRayVolume* getVolume(const VR::VRayContext &rc);
+	void renderBegin(TimeValue t, VR::VRayRenderer *vray) VRAY_OVERRIDE;
+	void renderEnd(VR::VRayRenderer *vray) VRAY_OVERRIDE;
+
+	VR::BSDFSampler* newBSDF(const VR::VRayContext &rc, VR::VRenderMtlFlags flags) VRAY_OVERRIDE;
+	void deleteBSDF(const VR::VRayContext &rc, VR::BSDFSampler *bsdf) VRAY_OVERRIDE;
+	
+	void addRenderChannel(int index) VRAY_OVERRIDE;
+	VR::VRayVolume* getVolume(const VR::VRayContext &rc) VRAY_OVERRIDE;
 };
 
 /*===========================================================================*\

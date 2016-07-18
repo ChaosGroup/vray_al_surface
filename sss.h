@@ -317,7 +317,6 @@ inline AtRGB integrateDirectionalHemi(const ScatteringParamsDirectional& sp, flo
 void alsIrradiateSample(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
-	VR::Vector U, VR::Vector V,
 	float sssMix
 );
 

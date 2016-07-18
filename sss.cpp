@@ -149,7 +149,6 @@ private:
 void alsIrradiateSample(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
-	VR::Vector U, VR::Vector V,
 	float sssMix
 )
 {
@@ -264,6 +263,9 @@ void alsIrradiateSample(
 			vassert(VR::fastfinite(result_direct.sum()));
 		}
 	}*/
+
+	VR::Vector U, V;
+	VR::computeTangentVectors(rc.rayresult.normal, U, V);
 
 	// Calculate the indirect lighting.
 	VR::Color result_indirect(0.0f, 0.0f, 0.0f);
@@ -519,7 +521,7 @@ VR::Color alsDiffusion(
 
 			// Shade the hit (result is stored in i-th element of the samples array in the dmd structure)
 			nrc.setRayResult(res, &isData, i);
-			alsIrradiateSample(nrc, dmd, U, V, sssMix);
+			alsIrradiateSample(nrc, dmd, sssMix);
 
 			// Process the hit
 			if (!dmd->samples[i].Rd.isBlack()) {
