@@ -77,8 +77,11 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	VR::ALBSDFParams &params=bsdf->getParams();
 
 	params.diffuse=toColor(diffuse)*diffuseStrength;
-	params.reflection=toColor(reflect);
-	params.reflectionGlossiness=glossiness;
+
+	params.reflectColor1=toColor(reflectColor1)*reflectStrength1;
+	params.reflectRoughness1=reflectRoughness1;
+	params.reflectIOR1=reflectIOR1;
+	
 	params.transparency=toColor(opacity).whiteComplement();
 	params.subdivs=8;
 	params.doubleSided=true;
@@ -99,6 +102,8 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 
 	params.sssDensityScale=sssDensityScale;
 
+	params.normalizeWeights();
+
 	bsdf->init(rc);
 	return bsdf;
 }
@@ -115,18 +120,4 @@ VR::VRayVolume* SkeletonMaterial::getVolume(const VR::VRayContext &rc) {
 
 void SkeletonMaterial::addRenderChannel(int index) {
 	renderChannels+=index;
-}
-
-// The actual BRDF stuff
-
-VR::Vector MyALBSDF::getGlossyReflectionDir(float uc, float vc, const VR::Vector &viewDir, float &rayProbability) {
-	return VR::blinnDir(uc, vc, params.reflectionGlossiness, viewDir, nm, rayProbability);
-}
-
-VR::real MyALBSDF::getGlossyProbability(const VR::Vector &direction, const VR::Vector &viewDir) {
-	return VR::blinnDirProb(direction, params.reflectionGlossiness, viewDir, inm);
-}
-
-float MyALBSDF::remapGlossiness(float nk) {
-	return nk>0.9999f? -1.0f : (1.0f/powf(1.0f-nk, 3.5f)-1.0f);
 }

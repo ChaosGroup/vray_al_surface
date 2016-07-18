@@ -38,8 +38,9 @@ enum { map_basic, map_diffuse, map_sss1, map_sss2, map_sss3, map_reflect1, map_r
 
 // Paramblock2 parameter list
 enum {
-	mtl_glossiness,
-	mtl_color,
+	mtl_reflect_roughness1,
+	mtl_reflect_color1,
+
 	mtl_diffuse,
 	mtl_opacity,
 
@@ -59,6 +60,9 @@ enum {
 
 	mtl_diffuseStrength,
 	mtl_sssDensityScale,
+
+	mtl_reflect_strength1,
+	mtl_reflect_ior1,
 };
 
 /*===========================================================================*\
@@ -86,9 +90,13 @@ public:
 	Interval ivalid;
 
 	// Cached parameters
-	float glossiness;
-	Color reflect, diffuse;
+	float reflectRoughness1;
+	Color reflectColor1;
+	float reflectStrength1;
+	float reflectIOR1;
+
 	Color opacity;
+	Color diffuse;
 	float diffuseStrength;
 
 	float sssMix;

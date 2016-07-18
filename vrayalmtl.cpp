@@ -154,13 +154,18 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
 
-	mtl_color, _FT("reflection"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_reflect_color1, _FT("reflection_color1"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.0f, 0.0f, 0.0f),
 		p_ui, map_reflect1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
-	mtl_glossiness, _FT("glossiness"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_roughness1, _FT("reflection_roughness1"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.5f,
 		p_range, 0.0f, 1.0f,
+		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
+	PB_END,
+	mtl_reflect_ior1, _FT("reflection_ior1"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.4f,
+		p_range, 1.0f, 999.0f,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	
@@ -422,8 +427,11 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 	if (!ivalid.InInterval(t)) {
 		ivalid.SetInfinite();
 
-		pblock->GetValue(mtl_glossiness, t, glossiness, ivalid);
-		pblock->GetValue(mtl_color, t, reflect, ivalid);
+		pblock->GetValue(mtl_reflect_roughness1, t, reflectRoughness1, ivalid);
+		pblock->GetValue(mtl_reflect_color1, t, reflectColor1, ivalid);
+		reflectStrength1=1.0f;
+		pblock->GetValue(mtl_reflect_ior1, t, reflectIOR1, ivalid);
+
 		pblock->GetValue(mtl_diffuse, t, diffuse, ivalid);
 		pblock->GetValue(mtl_opacity, t, opacity, ivalid);
 
