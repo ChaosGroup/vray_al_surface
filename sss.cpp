@@ -1,4 +1,5 @@
 #include "sss.h"
+#include "vraydmcsampler.h"
 
 const float ScatteringProfileDirectional::eta(1.3f);
 const float ScatteringProfileDirectional::C_phi(0.175626f);
@@ -338,82 +339,15 @@ void alsIrradiateSample(
 	//}
 }
 
-VR::Color alsDiffusion(
-	VR::VRayContext &rc,
-	DirectionalMessageData *dmd,
-	bool directional,
-	int numComponents,
-	float sssMix
-)
-{
-	VR::Vector U, V;
-	VR::computeTangentVectors(rc.rayresult.gnormal, U, V);
-
-	numComponents=VR::Min(numComponents, SSS_MAX_PROFILES);
-	float l = 0.0f;
-	float inv_pdf_sum = 0.0f;
-	float comp_pdf[9];
-	float comp_cdf[9+1];
-	comp_cdf[0] = 0.0f;
-	int last_nonzero = numComponents;
-	for (int i=0; i < numComponents; ++i)
+struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
+	MultipleScatteringSampler(const VR::VRayContext &rc, DirectionalMessageData *dmd, float sssMix, float comp_pdf[9], float comp_cdf[0], float R_max)
+		:dmd(dmd), sssMix(sssMix), comp_pdf(comp_pdf), comp_cdf(comp_cdf), R_max(R_max)
 	{
-		// dmd->sp[i] = ScatteringProfileDirectional(Rd[i], sssDensityScale/radii[i]);
-		float w = (dmd->weights[i]).maxComponentValue();
-		float pdf = dmd->sp[i].alpha_prime;
-		comp_pdf[i] = pdf * w;
-		comp_cdf[i+1] = comp_cdf[i] + comp_pdf[i];
-		inv_pdf_sum += comp_pdf[i];
-
-		if (w > 0.0f)
-		{
-			// track the last non-zero weight we encounter so that we can ignore completely missing lobes
-			last_nonzero = i+1;  
-			// track the largest mean free path so we can set that to be our maximum raytracing distance
-			l = VR::Max(l, dmd->sp[i].zr);
-		} 
+		VR::computeTangentVectors(rc.rayresult.gnormal, U, V);
 	}
 
-	// set the number of components to be the number of non-zero-weight components
-	numComponents = VR::Min(numComponents, last_nonzero);
-	// set the maximum raytracing distance to be some multiple of the largest mean-free path
-	// the choice of SSS_MAX_RADIUS is a quality/speed tradeoff. The default of 25 seems to work well for most cases
-	const float R_max = l * SSS_MAX_RADIUS;
-
-	// normalize the PDF and CDF
-	inv_pdf_sum = 1.0f / inv_pdf_sum;
-	for (int i=0; i < numComponents; ++i)
-	{
-		comp_pdf[i] *= inv_pdf_sum;
-		comp_cdf[i+1] *= inv_pdf_sum;
-	}
-
-	// trick Arnold into thinking we're shooting from a different face than we actually are so he doesn't ignore intersections
-	// void *old_fi = rc.rayresult.skipTag;
-	// rc.rayresult.skipTag = NULL;
-
-	VR::Color result_sss(0.0f, 0.0f, 0.0f);
-	
-	VR::Color Rd_sum(0.0f, 0.0f, 0.0f);
-	int samplesTaken = 0;
-
-	VR::Ray wi_ray;
-	// VR::IntersectionData scrs;
-	
-	dmd->wo = -rc.rayparams.viewDir;
-	dmd->numComponents = numComponents;
-	dmd->directional = directional;
-	
-	VR::Vector axes[3] = { U, V, rc.rayresult.gnormal };
-	double sss_samples_c = 0;
-
-	VR::VRayContext &nrc=rc.newSpawnContext(0, VR::Color(1.0f, 1.0f, 1.0f), 0, rc.rayresult.gnormal);
-
-	for (int i=0; i<1; i++)
-	{
-		float samples[2];
-		samples[0]=nrc.getDMCValue();
-		samples[1]=nrc.getDMCValue();
+	VR::Color sampleColor(const VR::VRayContext &rc, VR::VRayContext &nrc, float uc, VR::ValidType &valid) VRAY_OVERRIDE {
+		float samples[2]={ uc, getDMCParam(nrc, 1) };
 
 		float dx, dy;
 
@@ -476,6 +410,8 @@ VR::Color alsDiffusion(
 			Vsss_2 = V;
 		}
 
+		int numComponents=dmd->numComponents;
+
 		float r_disk[3];
 		for (int i=0; i < numComponents; ++i)
 		{
@@ -489,15 +425,14 @@ VR::Color alsDiffusion(
 		}
 
 		// if the sampled distance is greater than we'll consider anyway, don't bother tracing at all.
-		if (r_disk[0] > R_max) continue;
+		if (r_disk[0] > R_max) return VR::Color(0.0f, 0.0f, 0.0f);
 
 		VR::Vector dir = -Wsss;
 		float dz = R_max;
 		VR::Vector origin = rc.rayresult.wpoint + Wsss*(dz*.25) + Usss * dx + Vsss * dy;
 		float maxdist = R_max ;//* 2.0f;
 
-		wi_ray.p=origin;
-		wi_ray.dir=dir;
+		VR::Ray wi_ray(origin, dir);
 		// AiMakeRay(&wi_ray, AI_RAY_SUBSURFACE, &origin, &dir, maxdist, sg);
 		VR::setTracedRay(nrc, wi_ray, 0.0f, maxdist);
 		// AiMakeRay(&wi_ray, AI_RAY_SUBSURFACE, &origin, &dir, maxdist, sg);
@@ -512,6 +447,9 @@ VR::Color alsDiffusion(
 		
 		memset(dmd->samples, 0, sizeof(DiffusionSample)*SSS_MAX_SAMPLES);
 		dmd->sss_depth = 0;
+
+		// Trace along the SSS ray, irradiating intersection points and accumulating the result.
+		VR::Color result_sss(0.0f, 0.0f, 0.0f);
 
 		VR::IntersectionData isData;
 		for (int i=0; i<SSS_MAX_SAMPLES && dmd->maxdist>0.0f; i++) {
@@ -558,14 +496,79 @@ VR::Color alsDiffusion(
 			nrc.rayparams.skipTag=nrc.rayresult.skipTag;
 			nrc.rayparams.mint=nrc.rayresult.wpointCoeff;
 		}
+
+		return result_sss;
 	}
+protected:
+	VR::Vector U, V;
+	DirectionalMessageData *dmd;
+	float sssMix;
+	float *comp_pdf;
+	float *comp_cdf;
+	float R_max;
+};
+
+VR::Color alsDiffusion(
+	VR::VRayContext &rc,
+	DirectionalMessageData *dmd,
+	bool directional,
+	int numComponents,
+	float sssMix
+)
+{
+	numComponents=VR::Min(numComponents, SSS_MAX_PROFILES);
+	float l = 0.0f;
+	float inv_pdf_sum = 0.0f;
+	float comp_pdf[9];
+	float comp_cdf[9+1];
+	comp_cdf[0] = 0.0f;
+	int last_nonzero = numComponents;
+	for (int i=0; i < numComponents; ++i)
+	{
+		// dmd->sp[i] = ScatteringProfileDirectional(Rd[i], sssDensityScale/radii[i]);
+		float w = (dmd->weights[i]).maxComponentValue();
+		float pdf = dmd->sp[i].alpha_prime;
+		comp_pdf[i] = pdf * w;
+		comp_cdf[i+1] = comp_cdf[i] + comp_pdf[i];
+		inv_pdf_sum += comp_pdf[i];
+
+		if (w > 0.0f)
+		{
+			// track the last non-zero weight we encounter so that we can ignore completely missing lobes
+			last_nonzero = i+1;  
+			// track the largest mean free path so we can set that to be our maximum raytracing distance
+			l = VR::Max(l, dmd->sp[i].zr);
+		} 
+	}
+
+	// set the number of components to be the number of non-zero-weight components
+	numComponents = VR::Min(numComponents, last_nonzero);
+	// set the maximum raytracing distance to be some multiple of the largest mean-free path
+	// the choice of SSS_MAX_RADIUS is a quality/speed tradeoff. The default of 25 seems to work well for most cases
+	const float R_max = l * SSS_MAX_RADIUS;
+
+	// normalize the PDF and CDF
+	inv_pdf_sum = 1.0f / inv_pdf_sum;
+	for (int i=0; i < numComponents; ++i)
+	{
+		comp_pdf[i] *= inv_pdf_sum;
+		comp_cdf[i+1] *= inv_pdf_sum;
+	}
+
+	dmd->wo = -rc.rayparams.viewDir;
+	dmd->numComponents = numComponents;
+	dmd->directional = directional;
+	
+	VR::VRayContext &nrc=rc.newSpawnContext(0, VR::Color(1.0f, 1.0f, 1.0f), 0, rc.rayresult.gnormal);
+
+	int nsamples=8;
+	if (rc.rayparams.currentPass==RPASS_GI) nsamples=0;
+
+	MultipleScatteringSampler multiScatterSampler(rc, dmd, sssMix, comp_pdf, comp_cdf,R_max);
+	VR::Color result_sss=multiScatterSampler.sample(rc, nrc, nsamples, 0x84323);
 	vassert(VR::fastfinite(result_sss.sum()));
 
 	nrc.releaseContext();
-
-	float w = 1.0f; // AiSamplerGetSampleInvCount(sampit);
-	result_sss *= w;
-	vassert(VR::fastfinite(result_sss.sum()));
 
 	VR::Color norm_factor(0.0f, 0.0f, 0.0f);
 	for (int c=0; c < numComponents; ++c)
@@ -576,9 +579,5 @@ VR::Color alsDiffusion(
 	result_sss /= norm_factor;
 
 	vassert(VR::fastfinite(result_sss.sum()));
-	// rc.rayresult.skipTag = old_fi;
-
-	// AiStateSetMsgInt("als_raytype", ALS_RAY_UNDEFINED);
-
 	return result_sss;
 }
