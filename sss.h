@@ -317,7 +317,7 @@ inline AtRGB integrateDirectionalHemi(const ScatteringParamsDirectional& sp, flo
 void alsIrradiateSample(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
-	float sssMix
+	const VR::Color &diffuse
 );
 
 // Called for a direct hit of a ray with a SSS material surface.
@@ -326,6 +326,7 @@ VR::Color alsDiffusion(
 	DirectionalMessageData *dmd,
 	bool directional,
 	int numComponents,
-	float sssMix
+	float sssMix,
+	const VR::Color &diffuse
 );
 

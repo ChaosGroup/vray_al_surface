@@ -146,7 +146,7 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc) {
 	VR::Color result_sss_indirect;
 	
 	int directional=true;
-	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix);
+	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, params.diffuse);
 
 	return result_sss;
 }

@@ -92,16 +92,16 @@ void matchNormals(const VR::Vector Nref, VR::Vector &Nmatch)
 }
 
 struct ALSIrradiateBRDF: VR::BRDFSampler {
-	ALSIrradiateBRDF(DirectionalMessageData *data, const VR::Color &Rnond, DiffusionSample& samp):dmd(data), Rnond(Rnond), samp(samp) {}
+	ALSIrradiateBRDF(DirectionalMessageData *data, const VR::Color &Rnond, DiffusionSample& samp, const VR::Color &diffuse):dmd(data), Rnond(Rnond), samp(samp), diffuse(diffuse) {}
 
 	VR::Color getDiffuseColor(VR::Color &lightColor) VRAY_OVERRIDE {
-		VR::Color res=lightColor*Rnond;
+		VR::Color res=lightColor*diffuse;
 		lightColor.makeZero();
 		return res;
 	}
 
 	VR::Color getLightMult(VR::Color &lightColor) VRAY_OVERRIDE {
-		VR::Color res=lightColor*Rnond;
+		VR::Color res=lightColor*diffuse;
 		lightColor.makeZero();
 		return res;
 	}
@@ -143,14 +143,15 @@ struct ALSIrradiateBRDF: VR::BRDFSampler {
 	}
 private:
 	DirectionalMessageData *dmd;
-	const VR::Color &Rnond;
+	VR::Color Rnond;
 	DiffusionSample &samp;
+	VR::Color diffuse;
 };
 
 void alsIrradiateSample(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
-	float sssMix
+	const VR::Color &diffuse
 )
 {
 	if (dmd->sss_depth >= SSS_MAX_SAMPLES)
@@ -229,7 +230,7 @@ void alsIrradiateSample(
 	}
 
 	// Calculate the direct lighting.
-	ALSIrradiateBRDF brdf(dmd, Rnond, samp);
+	ALSIrradiateBRDF brdf(dmd, Rnond, samp, diffuse);
 	result_direct=rc.vray->getSequenceData().directLightManager->eval(rc, brdf);
 
 	/*
@@ -340,8 +341,8 @@ void alsIrradiateSample(
 }
 
 struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
-	MultipleScatteringSampler(const VR::VRayContext &rc, DirectionalMessageData *dmd, float sssMix, float comp_pdf[9], float comp_cdf[0], float R_max)
-		:dmd(dmd), sssMix(sssMix), comp_pdf(comp_pdf), comp_cdf(comp_cdf), R_max(R_max)
+	MultipleScatteringSampler(const VR::VRayContext &rc, DirectionalMessageData *dmd, const VR::Color &diffuseColor)
+		:dmd(dmd), diffuse(diffuseColor)
 	{
 		VR::computeTangentVectors(rc.rayresult.gnormal, U, V);
 	}
@@ -459,7 +460,7 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 
 			// Shade the hit (result is stored in i-th element of the samples array in the dmd structure)
 			nrc.setRayResult(res, &isData, i);
-			alsIrradiateSample(nrc, dmd, sssMix);
+			alsIrradiateSample(nrc, dmd, diffuse);
 
 			// Process the hit
 			if (!dmd->samples[i].Rd.isBlack()) {
@@ -499,13 +500,56 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 
 		return result_sss;
 	}
+
+	int computePDFs(int numComponents) {
+		numComponents=VR::Min(numComponents, SSS_MAX_PROFILES);
+		float l = 0.0f;
+		float inv_pdf_sum = 0.0f;
+
+		comp_cdf[0] = 0.0f;
+		int last_nonzero = numComponents;
+		for (int i=0; i < numComponents; ++i)
+		{
+			// dmd->sp[i] = ScatteringProfileDirectional(Rd[i], sssDensityScale/radii[i]);
+			float w = (dmd->weights[i]).maxComponentValue();
+			float pdf = dmd->sp[i].alpha_prime;
+			comp_pdf[i] = pdf * w;
+			comp_cdf[i+1] = comp_cdf[i] + comp_pdf[i];
+			inv_pdf_sum += comp_pdf[i];
+
+			if (w > 0.0f)
+			{
+				// track the last non-zero weight we encounter so that we can ignore completely missing lobes
+				last_nonzero = i+1;  
+				// track the largest mean free path so we can set that to be our maximum raytracing distance
+				l = VR::Max(l, dmd->sp[i].zr);
+			} 
+		}
+
+		// set the number of components to be the number of non-zero-weight components
+		numComponents = VR::Min(numComponents, last_nonzero);
+		// set the maximum raytracing distance to be some multiple of the largest mean-free path
+		// the choice of SSS_MAX_RADIUS is a quality/speed tradeoff. The default of 25 seems to work well for most cases
+		R_max = l * SSS_MAX_RADIUS;
+
+		// normalize the PDF and CDF
+		inv_pdf_sum = 1.0f / inv_pdf_sum;
+		for (int i=0; i < numComponents; ++i)
+		{
+			comp_pdf[i] *= inv_pdf_sum;
+			comp_cdf[i+1] *= inv_pdf_sum;
+		}
+
+		return numComponents;
+	}
+
 protected:
 	VR::Vector U, V;
 	DirectionalMessageData *dmd;
-	float sssMix;
-	float *comp_pdf;
-	float *comp_cdf;
+	float comp_pdf[9];
+	float comp_cdf[9+1];
 	float R_max;
+	VR::Color diffuse;
 };
 
 VR::Color alsDiffusion(
@@ -513,58 +557,24 @@ VR::Color alsDiffusion(
 	DirectionalMessageData *dmd,
 	bool directional,
 	int numComponents,
-	float sssMix
+	float sssMix,
+	const VR::Color &diffuseColor
 )
 {
-	numComponents=VR::Min(numComponents, SSS_MAX_PROFILES);
-	float l = 0.0f;
-	float inv_pdf_sum = 0.0f;
-	float comp_pdf[9];
-	float comp_cdf[9+1];
-	comp_cdf[0] = 0.0f;
-	int last_nonzero = numComponents;
-	for (int i=0; i < numComponents; ++i)
-	{
-		// dmd->sp[i] = ScatteringProfileDirectional(Rd[i], sssDensityScale/radii[i]);
-		float w = (dmd->weights[i]).maxComponentValue();
-		float pdf = dmd->sp[i].alpha_prime;
-		comp_pdf[i] = pdf * w;
-		comp_cdf[i+1] = comp_cdf[i] + comp_pdf[i];
-		inv_pdf_sum += comp_pdf[i];
+	VR::Color multResult=sssMix*diffuseColor;
 
-		if (w > 0.0f)
-		{
-			// track the last non-zero weight we encounter so that we can ignore completely missing lobes
-			last_nonzero = i+1;  
-			// track the largest mean free path so we can set that to be our maximum raytracing distance
-			l = VR::Max(l, dmd->sp[i].zr);
-		} 
-	}
-
-	// set the number of components to be the number of non-zero-weight components
-	numComponents = VR::Min(numComponents, last_nonzero);
-	// set the maximum raytracing distance to be some multiple of the largest mean-free path
-	// the choice of SSS_MAX_RADIUS is a quality/speed tradeoff. The default of 25 seems to work well for most cases
-	const float R_max = l * SSS_MAX_RADIUS;
-
-	// normalize the PDF and CDF
-	inv_pdf_sum = 1.0f / inv_pdf_sum;
-	for (int i=0; i < numComponents; ++i)
-	{
-		comp_pdf[i] *= inv_pdf_sum;
-		comp_cdf[i+1] *= inv_pdf_sum;
-	}
+	MultipleScatteringSampler multiScatterSampler(rc, dmd, multResult);
+	numComponents=multiScatterSampler.computePDFs(numComponents);
 
 	dmd->wo = -rc.rayparams.viewDir;
 	dmd->numComponents = numComponents;
 	dmd->directional = directional;
 	
-	VR::VRayContext &nrc=rc.newSpawnContext(0, VR::Color(1.0f, 1.0f, 1.0f), 0, rc.rayresult.gnormal);
+	VR::VRayContext &nrc=rc.newSpawnContext(0, multResult, 0, rc.rayresult.gnormal);
 
 	int nsamples=8;
 	if (rc.rayparams.currentPass==RPASS_GI) nsamples=0;
 
-	MultipleScatteringSampler multiScatterSampler(rc, dmd, sssMix, comp_pdf, comp_cdf,R_max);
 	VR::Color result_sss=multiScatterSampler.sample(rc, nrc, nsamples, 0x84323);
 	vassert(VR::fastfinite(result_sss.sum()));
 
