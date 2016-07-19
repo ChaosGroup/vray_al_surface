@@ -26,10 +26,15 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	Color invTransp=params.transparency.whiteComplement();
 	params.diffuse*=invTransp;
 	params.reflectColor1*=invTransp;
+	params.reflectColor2*=invTransp;
 
 	eta1=1.0f/params.reflectIOR1;
 	viewFresnel1=computeDielectricFresnel(rc.rayparams.viewDir, getReflectDir(rc.rayparams.viewDir, normal), normal, eta1);
 	viewFresnel1=clamp(viewFresnel1, 0.001f, 0.999f); // Can be optimized for when there is no diffuse component.
+
+	eta2=1.0f/params.reflectIOR2;
+	viewFresnel2=computeDielectricFresnel(rc.rayparams.viewDir, getReflectDir(rc.rayparams.viewDir, normal), normal, eta2);
+	viewFresnel2=clamp(viewFresnel2, 0.001f, 0.999f); // Can be optimized for when there is no diffuse component.
 
 	// If GI or glossy ray, disable SSS
 	if (rc.rayparams.diffuseLevel>0 || (rc.rayparams.totalLevel>1 && 0!=(rc.rayparams.rayType & RT_GLOSSY)))
@@ -58,14 +63,20 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 
 // From BRDFSampler
 Color MyBaseBSDF::getDiffuseColor(Color &lightColor) {
-	Color res=params.diffuse*(1.0f-viewFresnel1)*(1.0f-params.sssMix);
+	float reflAmount1=viewFresnel1*params.reflectColor1.maxComponentValue();
+	float reflAmount2=viewFresnel2*params.reflectColor2.maxComponentValue();
+	Color res=params.diffuse*(1.0f-params.sssMix)*(1.0f-reflAmount1)*(1.0f-reflAmount2);
 	res*=lightColor;
 	lightColor*=params.transparency;
 	return res;
 }
 
 Color MyBaseBSDF::getLightMult(Color &lightColor) {
-	Color res=params.diffuse*(1.0f-viewFresnel1)*(1.0f-params.sssMix)+params.reflectColor1*viewFresnel1;
+	float reflAmount1=viewFresnel1*params.reflectColor1.maxComponentValue();
+	float reflAmount2=viewFresnel2*params.reflectColor2.maxComponentValue();
+	Color res=params.diffuse*(1.0f-params.sssMix)*(1.0f-reflAmount1)*(1.0f-reflAmount2)
+		+params.reflectColor2*viewFresnel2*(1.0f-reflAmount1)
+		+params.reflectColor1*viewFresnel1;
 	res*=lightColor;
 	lightColor*=params.transparency;
 	return res;
@@ -75,18 +86,35 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 	Color res(0.0f, 0.0f, 0.0f);
 
 	// Skip this part if specular component is not required
-	if (!dontTrace && params.reflectRoughness1>=1e-6f && 0!=(flags & FBRDF_SPECULAR)) {
-		float probReflection=0.0f;
-		float brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness1, 2.0f, normal, nm, inm, probReflection, false);
+	if (!dontTrace && 0!=(flags & FBRDF_SPECULAR)) {
+		if (params.reflectRoughness1>=1e-6f) {
+			float probReflection=0.0f;
+			float brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness1, 2.0f, normal, nm, inm, probReflection, false);
 
-		float k=getReflectionWeight(probLight, probReflection);
-		float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, normal, eta1);
-		res+=(0.5f*k*brdfValue*fresnel)*(params.reflectColor1*lightColor);
+			float k=getReflectionWeight(probLight, probReflection);
+			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, normal, eta1);
+			res+=(0.5f*k*brdfValue*fresnel)*(params.reflectColor1*lightColor);
 
-		if (probReflection>0.0f) {
-			float kti=clamp(1.0f-fresnel*params.reflectColor1.maxComponentValue(), 0.0f, 1.0f);
-			lightColor*=kti;
-			origLightColor*=kti;
+			if (probReflection>0.0f) {
+				float kti=clamp(1.0f-fresnel*params.reflectColor1.maxComponentValue(), 0.0f, 1.0f);
+				lightColor*=kti;
+				origLightColor*=kti;
+			}
+		}
+
+		if (params.reflectRoughness2>=1e-6f) {
+			float probReflection=0.0f;
+			float brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness2, 2.0f, normal, nm, inm, probReflection, false);
+
+			float k=getReflectionWeight(probLight, probReflection);
+			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, normal, eta2);
+			res+=(0.5f*k*brdfValue*fresnel)*(params.reflectColor2*lightColor);
+
+			if (probReflection>0.0f) {
+				float kti=clamp(1.0f-fresnel*params.reflectColor2.maxComponentValue(), 0.0f, 1.0f);
+				lightColor*=kti;
+				origLightColor*=kti;
+			}
 		}
 	}
 
@@ -112,12 +140,10 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 	Color reflectTransp(0.0f, 0.0f, 0.0f);
 	int reflectOpaque=true;
 	if (2!=doDiffuse && !dontTrace && nsamples!=0) {
-		Color reflectFresnel(1.0f, 1.0f, 1.0f);
-		rc.mtlresult.color+=computeReflections(rc, reflectFresnel);
+		float reflectTransp=1.0f;
+		rc.mtlresult.color+=computeReflections(rc, reflectTransp);
 		
-		reflectFresnel*=params.reflectColor1.maxComponentValue();
-		reflectTransp=reflectFresnel.whiteComplement();
-		reflectOpaque=(reflectTransp.sum()<1e-6f);
+		reflectOpaque=(reflectTransp<1e-6f);
 	}
 
 	if (!reflectOpaque) {
@@ -181,15 +207,13 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 }
 
 struct ReflectionsSampler: AdaptiveColorSampler {
-	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf):fresnelSum(0.0f), bsdf(bsdf) {}
+	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf, const VR::Color &color, float roughness, float eta):fresnelSum(0.0f), bsdf(bsdf), color(color), roughness(roughness), eta(eta) {}
 
 	VR::Color sampleColor(const VR::VRayContext &rc, VR::VRayContext &nrc, float uc, VR::ValidType &valid) VRAY_OVERRIDE {
 		Vector dir;
 		float brdfMult=1.0f;
 
-		const ALBSDFParams &params=bsdf.getParams();
-
-		if (params.reflectRoughness1<1e-6f) {
+		if (roughness<1e-6f) {
 			// Pure reflection
 			dir=getReflectDir(rc.rayparams.viewDir, bsdf.getNormal());
 
@@ -200,7 +224,7 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 			if (r0*r1<0.0f) dir=getReflectDir(rc.rayparams.viewDir, gnormal);
 		} else {
 			// Compute a reflection direction
-			dir=ggxDirMixed(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), params.reflectRoughness1, 2.0f, rc.rayparams.viewDir, bsdf.getNormalMatrix(), nrc.rayparams.rayProbability, brdfMult, false, bsdf.getNormalMatrixInv());
+			dir=ggxDirMixed(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, 2.0f, rc.rayparams.viewDir, bsdf.getNormalMatrix(), nrc.rayparams.rayProbability, brdfMult, false, bsdf.getNormalMatrixInv());
 
 			// If this is below the surface, ignore
 			if (dotf(dir, rc.rayresult.gnormal)<0.0f)
@@ -211,7 +235,7 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 		VR::getReflectDerivs(rc.rayparams.viewDir, dir, rc.rayparams.dDdx, rc.rayparams.dDdy, nrc.rayparams.dDdx, nrc.rayparams.dDdy);
 
 		// Compute Fresnel term
-		float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, dir, bsdf.getNormal(), bsdf.getEta1());
+		float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, dir, bsdf.getNormal(), eta);
 		fresnelSum+=fresnel;
 
 		// Set the direction into the ray context
@@ -221,7 +245,7 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 		Color col=nrc.traceCurrentRay();
 
 		// Apply reflectoin color, fresnel and BRDF value
-		col*=params.reflectColor1*brdfMult*fresnel;
+		col*=color*brdfMult*fresnel;
 
 		return col;
 	}
@@ -237,9 +261,12 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 protected:
 	float fresnelSum;
 	MyBaseBSDF &bsdf;
+	float roughness;
+	float eta;
+	VR::Color color;
 };
 
-Color MyBaseBSDF::computeReflections(VRayContext &rc, Color &reflectFresnel) {
+Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
 	// Create a new context
 	VRayContext &nrc=rc.newSpawnContext(2, params.reflectColor1*viewFresnel1, RT_REFLECT | RT_GLOSSY | RT_ENVIRONMENT, normal);
 
@@ -254,10 +281,20 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, Color &reflectFresnel) {
 	int nsamples=this->nsamples;
 	if (rc.rayparams.currentPass==RPASS_GI || (rc.rayparams.rayType & RT_LIGHT)!=0 || params.reflectRoughness1<1e-6f) nsamples=0;
 
-	// Integrate reflections
-	ReflectionsSampler reflectionsSampler(rc, *this);
-	Color reflections=reflectionsSampler.sample(rc, nrc, nsamples, 0x6763223);
-	reflectFresnel=reflectionsSampler.getFresnel();
+	Color reflections(0.0f, 0.0f, 0.0f);
+
+	{ // Integrate primary reflections
+		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor1, params.reflectRoughness1, eta1);
+		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x6763223);
+		reflectTransp=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor1.maxComponentValue());
+	}
+
+	{ // Integrate secondary reflections
+		nrc.rayparams.currentMultResult=params.reflectColor2*viewFresnel2*reflectTransp;
+		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2, params.reflectRoughness2, eta2);
+		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x6763223);
+		reflectTransp*=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor2.maxComponentValue());
+	}
 
 	// Release the context
 	nrc.releaseContext();

@@ -184,6 +184,11 @@ public:
 	float reflectStrength1;
 	float reflectIOR1;
 
+	float reflectRoughness2;
+	Color reflectColor2;
+	float reflectStrength2;
+	float reflectIOR2;
+
 	Color opacity;
 	Color diffuse;
 	float diffuseStrength;

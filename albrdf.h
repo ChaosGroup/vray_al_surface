@@ -9,6 +9,10 @@ struct ALBSDFParams {
 	Color reflectColor1;
 	float reflectRoughness1;
 	float reflectIOR1;
+
+	Color reflectColor2;
+	float reflectRoughness2;
+	float reflectIOR2;
 	
 	int subdivs;
 	Color transparency;
@@ -73,11 +77,14 @@ protected:
 	float viewFresnel1; // An crude estimate of the Fresnel, used in getLightMult().
 	float eta1; // Inverse of ior1
 
+	float viewFresnel2;
+	float eta2;
+
 	virtual void computeNormalMatrix(const VRayContext &rc, const Vector &normal, Matrix &nm);
 
 	Color computeRawSSS(VRayContext &rc, const Color &diffuse);
 
-	Color computeReflections(VRayContext &rc, Color &reflectFresnel);
+	Color computeReflections(VRayContext &rc, float &reflectTransp);
 public:
 	// Return the params so that they can be set.
 	ALBSDFParams& getParams(void) { return params; }

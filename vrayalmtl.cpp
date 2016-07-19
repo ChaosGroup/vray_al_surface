@@ -768,6 +768,11 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 		pblock->GetValue(mtl_reflect_strength1, t, reflectStrength1, ivalid);
 		pblock->GetValue(mtl_reflect_ior1, t, reflectIOR1, ivalid);
 
+		pblock->GetValue(mtl_reflect_roughness2, t, reflectRoughness2, ivalid);
+		pblock->GetValue(mtl_reflect_color2, t, reflectColor2, ivalid);
+		pblock->GetValue(mtl_reflect_strength2, t, reflectStrength2, ivalid);
+		pblock->GetValue(mtl_reflect_ior2, t, reflectIOR2, ivalid);
+
 		pblock->GetValue(mtl_diffuse, t, diffuse, ivalid);
 		pblock->GetValue(mtl_opacity, t, opacity, ivalid);
 
