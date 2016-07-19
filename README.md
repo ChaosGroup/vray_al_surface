@@ -24,7 +24,7 @@ The material is called VRayALMtl.
 Notes
 -----
 
-*) Not all parameters of alSurface are ported;
-*) The specular BRDFs are fixed to GGX for both primary and secondary reflections;
-*) Sub-surface scattering is fixed to "directional" right now;
-*) Refractions and thin translucency are not ported yet.
+- Not all parameters of alSurface are ported;
+- For the moment, the specular BRDFs are fixed to GGX for both primary and secondary reflections;
+- For the moment, sub-surface scattering type is fixed to "directional";
+- Refractions and thin translucency are not ported yet.
