@@ -63,6 +63,74 @@ enum {
 
 	mtl_reflect_strength1,
 	mtl_reflect_ior1,
+
+	mtl_reflect_roughness2,
+	mtl_reflect_color2,
+	mtl_reflect_strength2,
+	mtl_reflect_ior2,
+
+	mtl_opacity_tex, mtl_opacity_tex_on, mtl_opacity_tex_mult, mtl_opacity_tex_shortmap,
+	mtl_bump_tex, mtl_bump_tex_on, mtl_bump_tex_mult,
+	mtl_displacement_tex, mtl_displacement_tex_on, mtl_displacement_tex_mult,
+
+	mtl_diffuse_tex, mtl_diffuse_tex_on, mtl_diffuse_tex_mult, mtl_diffuse_tex_shortmap,
+	mtl_diffuse_strength_tex, mtl_diffuse_strength_tex_on, mtl_diffuse_strength_tex_mult, mtl_diffuse_strength_tex_shortmap,
+
+	mtl_reflect_color1_tex, mtl_reflect_color1_tex_on, mtl_reflect_color1_tex_mult, mtl_reflect_color1_tex_shortmap,
+	mtl_reflect_roughness1_tex, mtl_reflect_roughness1_tex_on, mtl_reflect_roughness1_tex_mult, mtl_reflect_roughness1_tex_shortmap,
+	mtl_reflect_strength1_tex, mtl_reflect_strength1_tex_on, mtl_reflect_strength1_tex_mult, mtl_reflect_strength1_tex_shortmap,
+	mtl_reflect_ior1_tex, mtl_reflect_ior1_tex_on, mtl_reflect_ior1_tex_mult, mtl_reflect_ior1_tex_shortmap,
+
+	mtl_reflect_color2_tex, mtl_reflect_color2_tex_on, mtl_reflect_color2_tex_mult, mtl_reflect_color2_tex_shortmap,
+	mtl_reflect_roughness2_tex, mtl_reflect_roughness2_tex_on, mtl_reflect_roughness2_tex_mult, mtl_reflect_roughness2_tex_shortmap,
+	mtl_reflect_strength2_tex, mtl_reflect_strength2_tex_on, mtl_reflect_strength2_tex_mult, mtl_reflect_strength2_tex_shortmap,
+	mtl_reflect_ior2_tex, mtl_reflect_ior2_tex_on, mtl_reflect_ior2_tex_mult, mtl_reflect_ior2_tex_shortmap,
+
+	mtl_sss_mix_tex, mtl_sss_mix_tex_on, mtl_sss_mix_tex_mult, mtl_sss_mix_tex_shortmap,
+
+	mtl_sss_weight1_tex, mtl_sss_weight1_tex_on, mtl_sss_weight1_tex_mult, mtl_sss_weight1_tex_shortmap,
+	mtl_sss_color1_tex, mtl_sss_color1_tex_on, mtl_sss_color1_tex_mult, mtl_sss_color1_tex_shortmap,
+	mtl_sss_radius1_tex, mtl_sss_radius1_tex_on, mtl_sss_radius1_tex_mult, mtl_sss_radius1_tex_shortmap,
+
+	mtl_sss_weight2_tex, mtl_sss_weight2_tex_on, mtl_sss_weight2_tex_mult, mtl_sss_weight2_tex_shortmap,
+	mtl_sss_color2_tex, mtl_sss_color2_tex_on, mtl_sss_color2_tex_mult, mtl_sss_color2_tex_shortmap,
+	mtl_sss_radius2_tex, mtl_sss_radius2_tex_on, mtl_sss_radius2_tex_mult, mtl_sss_radius2_tex_shortmap,
+
+	mtl_sss_weight3_tex, mtl_sss_weight3_tex_on, mtl_sss_weight3_tex_mult, mtl_sss_weight3_tex_shortmap,
+	mtl_sss_color3_tex, mtl_sss_color3_tex_on, mtl_sss_color3_tex_mult, mtl_sss_color3_tex_shortmap,
+	mtl_sss_radius3_tex, mtl_sss_radius3_tex_on, mtl_sss_radius3_tex_mult, mtl_sss_radius3_tex_shortmap,
+};
+
+enum {
+	SUBTEXNO_OPACITY,
+	SUBTEXNO_BUMP,
+	SUBTEXNO_DISPLACEMENT,
+
+	SUBTEXNO_DIFFUSE,
+	SUBTEXNO_DIFFUSE_STRENGTH,
+
+	SUBTEXNO_REFLECT1_COLOR,
+	SUBTEXNO_REFLECT1_STRENGTH,
+	SUBTEXNO_REFLECT1_ROUGHNESS,
+	SUBTEXNO_REFLECT1_IOR,
+
+	SUBTEXNO_REFLECT2_COLOR,
+	SUBTEXNO_REFLECT2_STRENGTH,
+	SUBTEXNO_REFLECT2_ROUGHNESS,
+	SUBTEXNO_REFLECT2_IOR,
+
+	SUBTEXNO_SSS_MIX,
+	SUBTEXNO_SSS1_COLOR,
+	SUBTEXNO_SSS1_WEIGHT,
+	SUBTEXNO_SSS1_RADIUS,
+	SUBTEXNO_SSS2_COLOR,
+	SUBTEXNO_SSS2_WEIGHT,
+	SUBTEXNO_SSS2_RADIUS,
+	SUBTEXNO_SSS3_COLOR,
+	SUBTEXNO_SSS3_WEIGHT,
+	SUBTEXNO_SSS3_RADIUS,
+
+	NSUBTEX
 };
 
 /*===========================================================================*\
@@ -76,15 +144,36 @@ public:
 	float remapGlossiness(float nk);
 };
 
+struct ALMtlTexInfo;
+
 /*===========================================================================*\
  |	SkeletonMaterial class defn
 \*===========================================================================*/
 
-class SkeletonMaterial : public Mtl, public VR::VRenderMtl {
+class SkeletonMaterial : public Mtl, public VR::VRenderMtl, public DADMgr {
 	VR::BRDFPool<MyALBSDF> bsdfPool;
 	VR::LayeredBSDFRenderChannels renderChannels;
 
 	VR::Color getBlend(ShadeContext &sc, int i);
+
+	// Depending on changed tex parameters  _tex, _tex_on, 
+	// the corresponding mapId and subtexno of ALMtlTexInfo are returned.
+	void findMapIDAndTexInfoRowByChangedParam(ParamID inChangedParam, MapID &mapid, int &texInfoRow);
+
+	// By selected shortmap button, the corresponding subtexno of TexInfo structure is defined.
+	// It is needed for access to the other referenced tex parameters.
+	int getRowBySelectedShortCtrl(HWND hwnd);
+
+	// Depending on that the texture is attached or attached and not included or not attached,
+	// the shortcut button text is selected based on index the method returns.
+	int getMapState(int subtexno);
+
+	// Evaluate a color texture and combine with a color.
+	VR::Color combineTex(const VR::VRayContext &rc, const VR::Color &origColor, int texIndex) const;
+
+	// Evaluate a float texture and combine with a float.
+	float combineTex(const VR::VRayContext &rc, float origValue, int texIndex) const;
+
 public:
 	// various variables
 	Interval ivalid;
@@ -104,6 +193,10 @@ public:
 	float sssRadius1, sssRadius2, sssRadius3;
 	float sssWeight1, sssWeight2, sssWeight3;
 	Color sssColor1, sssColor2, sssColor3;
+
+	Texmap *subtex[NSUBTEX];
+	float subtexMult[NSUBTEX];
+	int subtexOn[NSUBTEX];
 
 	// Parameter and UI management
 	IParamBlock2 *pblock; 	
@@ -146,11 +239,10 @@ public:
 	TSTR GetSubMtlTVName(int i) { return _T(""); }
 
 	// SubTexmap access methods
-	int NumSubTexmaps() { return 0; }
-	Texmap* GetSubTexmap(int i) { return NULL; }
-	void SetSubTexmap(int i, Texmap *m) {}
-	TSTR GetSubTexmapSlotName(int i) { return _T(""); }
-	TSTR GetSubTexmapTVName(int i) { return _T(""); }
+	int NumSubTexmaps();
+	Texmap* GetSubTexmap(int i);
+	void SetSubTexmap(int i, Texmap *m);
+	TSTR GetSubTexmapSlotName(int i);
 
 	// Number of subanims
 	int NumSubs() { return 1; } 
@@ -179,6 +271,24 @@ public:
 		if (id==I_VRAYMTL) return static_cast<VR::VRenderMtl*>(this);
 		return Mtl::GetInterface(id);
 	}
+
+	// From DADMgr
+	SClass_ID GetDragType(HWND hwnd, POINT p);
+	BOOL IsNew(HWND hwnd, POINT p, SClass_ID type);
+	ReferenceTarget *GetInstance(HWND hwnd, POINT p, SClass_ID type);
+	BOOL OkToDrop(ReferenceTarget *dropThis, HWND hfrom, HWND hto, POINT p, SClass_ID type, BOOL isNew);
+	HCURSOR DropCursor(ReferenceTarget *dropThis, HWND hfrom, HWND hto, POINT p, SClass_ID type, BOOL isNew);
+	int SlotOwner();
+	BOOL AutoTooltip(){ return TRUE; }
+#if GET_MAX_RELEASE(VERSION_3DSMAX) < 11900
+	void Drop(ReferenceTarget *dropThis, HWND hwnd, POINT p, SClass_ID type);
+#else
+	void Drop(ReferenceTarget *dropThis, HWND hwnd, POINT p, SClass_ID type, DADMgr* srcMgr = NULL, BOOL bSrcClone = FALSE);
+#endif
+
+	void drop(ReferenceTarget *dropThis, HWND hwnd, POINT p, SClass_ID type, IParamBlock2 *pblock);
+
+	void updateTexmapButtons(MapID mapid, int subtexno);
 
 	// From VRenderMtl
 	void renderBegin(TimeValue t, VR::VRayRenderer *vray) VRAY_OVERRIDE;

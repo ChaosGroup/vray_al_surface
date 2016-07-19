@@ -15,6 +15,48 @@
 #define IS_PUBLIC 1
 #endif // _FREE_
 
+struct ALMtlTexInfo {
+	ParamID texID;
+	ParamID texOnID;
+	ParamID texMultID;
+	ParamID texShortID;
+	int shortCtrlID;
+	const TCHAR *texName;
+};
+
+ALMtlTexInfo texInfo[NSUBTEX]={
+	{ mtl_opacity_tex, mtl_opacity_tex_on, mtl_opacity_tex_mult, mtl_opacity_tex_shortmap, -1, _T("opacity_texture") },
+	{ mtl_bump_tex, mtl_bump_tex_on, mtl_bump_tex_mult, -1, -1, _T("bump_texture") },
+	{ mtl_displacement_tex, mtl_displacement_tex_on, mtl_displacement_tex_mult, -1, -1, _T("displacement_texture") },
+	
+	{ mtl_diffuse_tex, mtl_diffuse_tex_on, mtl_diffuse_tex_mult, mtl_diffuse_tex_shortmap, -1, _T("diffuse_texture") },
+	{ mtl_diffuse_strength_tex, mtl_diffuse_strength_tex_on, mtl_diffuse_strength_tex_mult, mtl_diffuse_strength_tex_shortmap, -1, _T("diffuse_strength_texture") },
+
+	{ mtl_reflect_color1_tex, mtl_reflect_color1_tex_on, mtl_reflect_color1_tex_mult, mtl_reflect_color1_tex_shortmap, -1, _T("reflection1_texture") },
+	{ mtl_reflect_strength1_tex, mtl_reflect_strength1_tex_on, mtl_reflect_strength1_tex_mult, mtl_reflect_strength1_tex_shortmap, -1, _T("reflection1_strength_texture") },
+	{ mtl_reflect_roughness1_tex, mtl_reflect_roughness1_tex_on, mtl_reflect_roughness1_tex_mult, mtl_reflect_roughness1_tex_shortmap, -1, _T("reflection1_roughness_texture") },
+	{ mtl_reflect_ior1_tex, mtl_reflect_ior1_tex_on, mtl_reflect_ior1_tex_mult, mtl_reflect_ior1_tex_shortmap, -1, _T("reflection1_ior_texture") },
+
+	{ mtl_reflect_color2_tex, mtl_reflect_color2_tex_on, mtl_reflect_color2_tex_mult, mtl_reflect_color2_tex_shortmap, -1, _T("reflecton2_texture") },
+	{ mtl_reflect_strength2_tex, mtl_reflect_strength2_tex_on, mtl_reflect_strength2_tex_mult, mtl_reflect_strength2_tex_shortmap, -1, _T("reflection2_strength_texture") },
+	{ mtl_reflect_roughness2_tex, mtl_reflect_roughness2_tex_on, mtl_reflect_roughness2_tex_mult, mtl_reflect_roughness2_tex_shortmap, -1, _T("reflection2_roughness_texture") },
+	{ mtl_reflect_ior2_tex, mtl_reflect_ior2_tex_on, mtl_reflect_ior2_tex_mult, mtl_reflect_ior2_tex_shortmap, -1, _T("reflection2_ior_texture") },
+
+	{ mtl_sss_mix_tex, mtl_sss_mix_tex_on, mtl_sss_mix_tex_mult, mtl_sss_mix_tex_shortmap, -1, _T("sss_mix_texture") },
+
+	{ mtl_sss_color1_tex, mtl_sss_color1_tex_on, mtl_sss_color1_tex_mult, mtl_sss_color1_tex_shortmap, -1, _T("sss1_color_texture") },
+	{ mtl_sss_weight1_tex, mtl_sss_weight1_tex_on, mtl_sss_weight1_tex_mult, mtl_sss_weight1_tex_shortmap, -1, _T("sss1_weight_texture") },
+	{ mtl_sss_radius1_tex, mtl_sss_radius1_tex_on, mtl_sss_radius1_tex_mult, mtl_sss_radius1_tex_shortmap, -1, _T("sss1_radius_texture") },
+
+	{ mtl_sss_color2_tex, mtl_sss_color2_tex_on, mtl_sss_color2_tex_mult, mtl_sss_color2_tex_shortmap, -1, _T("sss2_color_texture") },
+	{ mtl_sss_weight2_tex, mtl_sss_weight2_tex_on, mtl_sss_weight2_tex_mult, mtl_sss_weight2_tex_shortmap, -1, _T("sss2_weight_texture") },
+	{ mtl_sss_radius2_tex, mtl_sss_radius2_tex_on, mtl_sss_radius2_tex_mult, mtl_sss_radius2_tex_shortmap, -1, _T("sss2_radius_texture") },
+
+	{ mtl_sss_color3_tex, mtl_sss_color3_tex_on, mtl_sss_color3_tex_mult, mtl_sss_color3_tex_shortmap, -1, _T("sss3_color_texture") },
+	{ mtl_sss_weight3_tex, mtl_sss_weight3_tex_on, mtl_sss_weight3_tex_mult, mtl_sss_weight3_tex_shortmap, -1, _T("sss3_weight_texture") },
+	{ mtl_sss_radius3_tex, mtl_sss_radius3_tex_on, mtl_sss_radius3_tex_mult, mtl_sss_radius3_tex_shortmap, -1, _T("sss3_radius_texture") }
+};
+
 /*===========================================================================*\
  |	Class Descriptor
 \*===========================================================================*/
@@ -116,6 +158,40 @@ ClassDesc* GetSkeletonMtlDesc() {return &SkelMtlCD;}
 static int numID=100;
 int ctrlID(void) { return numID++; }
 
+#define DEFINE_SUBTEX(subtexIndex, texName, defMult, rangeMin, rangeMax) \
+	texInfo[subtexIndex].texID, _FT(texName), TYPE_TEXMAP, 0, 0,\
+		p_subtexno, subtexIndex,\
+		p_ui, map_textures, TYPE_TEXMAPBUTTON, ctrlID(),\
+	PB_END,\
+	texInfo[subtexIndex].texOnID, _FT(texName) _FT("_on"), TYPE_BOOL, 0, 0,\
+		p_default, TRUE,\
+		p_ui, map_textures, TYPE_SINGLECHEKBOX, ctrlID(),\
+	PB_END,\
+	texInfo[subtexIndex].texMultID, _FT(texName) _FT("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
+		p_default, defMult,\
+		p_range, rangeMin, rangeMax,\
+		p_ui, map_textures, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 1.0f,\
+	PB_END
+
+#define DEFINE_SUBTEX_SHORTMAP(subtexIndex, texName, defMult, rangeMin, rangeMax, mapID) \
+	texInfo[subtexIndex].texShortID, _FT(texName) _T("_shortmap"), TYPE_TEXMAP, P_NO_AUTO_LABELS + P_INVISIBLE + P_TRANSIENT + P_OBSOLETE, 0,\
+		p_subtexno, subtexIndex,\
+		p_ui, mapID, TYPE_TEXMAPBUTTON, texInfo[subtexIndex].shortCtrlID = ctrlID(),\
+	PB_END,\
+	texInfo[subtexIndex].texID, _FT(texName), TYPE_TEXMAP, 0, 0,\
+		p_subtexno, subtexIndex,\
+		p_ui, map_textures, TYPE_TEXMAPBUTTON, ctrlID(),\
+	PB_END,\
+	texInfo[subtexIndex].texOnID, _FT(texName) _FT("_on"), TYPE_BOOL, 0, 0,\
+		p_default, TRUE,\
+		p_ui, map_textures, TYPE_SINGLECHEKBOX, ctrlID(),\
+	PB_END,\
+	texInfo[subtexIndex].texMultID, _FT(texName) _FT("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
+		p_default, defMult,\
+		p_range, rangeMin, rangeMax,\
+		p_ui, map_textures, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 1.0f,\
+	PB_END
+
 static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0, &SkelMtlCD, P_AUTO_CONSTRUCT + P_AUTO_UI + P_MULTIMAP, 0, 
 	//rollouts
 	8,
@@ -138,81 +214,147 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_default, Color(1.0f, 1.0f, 1.0f),
 		p_ui, map_basic, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_OPACITY, "opacity_texture", 100.0f, 0.0f, 100.0f, map_basic),
 
 	mtl_diffuse, _FT("diffuse_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.5f, 0.5f, 0.5f),
 		p_ui, map_diffuse, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_DIFFUSE, "diffuse_color_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
+
 	mtl_diffuseStrength, _FT("diffuse_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_DIFFUSE_STRENGTH, "diffuse_strength_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
+	
 	mtl_sssMix, _FT("sss_mix"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS_MIX, "sss_mix_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
 
-	mtl_reflect_color1, _FT("reflection_color1"), TYPE_RGBA, P_ANIMATABLE, 0,
+	// Reflection 1
+	mtl_reflect_color1, _FT("reflect1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.0f, 0.0f, 0.0f),
 		p_ui, map_reflect1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
-	mtl_reflect_roughness1, _FT("reflection_roughness1"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_COLOR, "reflect1_color_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
+
+	mtl_reflect_strength1, _FT("reflect1_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.0f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
+	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_STRENGTH, "reflect1_strength_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
+
+	mtl_reflect_roughness1, _FT("reflect1_roughness"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.5f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
-	mtl_reflect_ior1, _FT("reflection_ior1"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_ROUGHNESS, "reflect1_roughness_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
+	
+	mtl_reflect_ior1, _FT("reflect1_ior"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.4f,
 		p_range, 1.0f, 999.0f,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_IOR, "reflect1_ior_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
 	
-	mtl_sssColor1, _FT("sss_color1"), TYPE_RGBA, P_ANIMATABLE, 0,
+	// Reflection 2
+	mtl_reflect_color2, _FT("reflect2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+		p_default, Color(0.0f, 0.0f, 0.0f),
+		p_ui, map_reflect2, TYPE_COLORSWATCH, ctrlID(),
+	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_COLOR, "reflect2_color_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
+
+	mtl_reflect_strength2, _FT("reflect2_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 0.0f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
+	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_STRENGTH, "reflect2_strength_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
+
+	mtl_reflect_roughness2, _FT("reflect2_roughness"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 0.5f,
+		p_range, 0.0f, 1.0f,
+		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
+	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_ROUGHNESS, "reflect2_roughness_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
+	
+	mtl_reflect_ior2, _FT("reflect2_ior"), TYPE_FLOAT, P_ANIMATABLE, 0,
+		p_default, 1.4f,
+		p_range, 1.0f, 999.0f,
+		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
+	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_IOR, "reflect2_ior_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
+
+	// SSS
+	mtl_sssColor1, _FT("sss1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.439f, 0.156f, 0.078f),
 		p_ui, map_sss1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
-	mtl_sssWeight1, _FT("sss_weight1"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS1_COLOR, "sss1_color_texture", 100.0f, 0.0f, 100.0f, map_sss1),
+
+	mtl_sssWeight1, _FT("sss1_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_sss1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
-	mtl_sssRadius1, _FT("sss_radius1"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS1_WEIGHT, "sss1_weight_texture", 100.0f, 0.0f, 100.0f, map_sss1),
+
+	mtl_sssRadius1, _FT("sss1_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.5f,
 		p_range, 0.0f, 1e6f,
 		p_ui, map_sss1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS1_RADIUS, "sss1_radius_texture", 100.0f, 0.0f, 100.0f, map_sss1),
 
-	mtl_sssColor2, _FT("sss_color2"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_sssColor2, _FT("sss2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.439f, 0.08f, 0.018f),
 		p_ui, map_sss2, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
-	mtl_sssWeight2, _FT("sss_weight2"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS2_COLOR, "sss2_color_texture", 100.0f, 0.0f, 100.0f, map_sss2),
+
+	mtl_sssWeight2, _FT("sss2_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_sss2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
-	mtl_sssRadius2, _FT("sss_radius2"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS2_WEIGHT, "sss2_weight_texture", 100.0f, 0.0f, 100.0f, map_sss2),
+
+	mtl_sssRadius2, _FT("sss2_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 4.0f,
 		p_range, 0.0f, 1e6f,
 		p_ui, map_sss2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS2_RADIUS, "sss2_radius_texture", 100.0f, 0.0f, 100.0f, map_sss2),
 
-	mtl_sssColor3, _FT("sss_color3"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_sssColor3, _FT("sss3_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.523f, 0.637f, 0.667f),
 		p_ui, map_sss3, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
-	mtl_sssWeight3, _FT("sss_weight3"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_COLOR, "sss3_color_texture", 100.0f, 0.0f, 100.0f, map_sss3),
+
+	mtl_sssWeight3, _FT("sss3_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
-	mtl_sssRadius3, _FT("sss_radius3"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_WEIGHT, "sss3_weight_texture", 100.0f, 0.0f, 100.0f, map_sss3),
+
+	mtl_sssRadius3, _FT("sss3_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.75f,
 		p_range, 0.0f, 1e6f,
 		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
+	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_RADIUS, "sss3_radius_texture", 100.0f, 0.0f, 100.0f, map_sss3),
+
+	DEFINE_SUBTEX(SUBTEXNO_BUMP, "bump_texture", 30.0f, -1000.0f, 1000.0f),
+	DEFINE_SUBTEX(SUBTEXNO_DISPLACEMENT, "bump_texture", 100.0f, 0.0f, 100.0f),
 PB_END
 );
 
@@ -221,6 +363,33 @@ PB_END
 \*===========================================================================*/
 
 class SkelMtlDlgProc : public ParamMap2UserDlgProc {
+	void shortmapsInit(SkeletonMaterial* mtl, HWND hWnd, IParamMap2 *map) {
+		if (!map) return;
+
+		IParamBlock2 *pblock = map->GetParamBlock();
+		if (!pblock) return;
+
+		MapID mapid;
+		int currRow;
+		for (int iTexInfoRow=0; iTexInfoRow<NSUBTEX ; ++iTexInfoRow) {
+			if (texInfo[iTexInfoRow].texShortID > -1) {
+				ParamDef pDef = pblock->GetParamDef(texInfo[iTexInfoRow].texShortID);
+				if (pDef.maps.Count() > 0) {
+					mapid = pDef.maps[0];
+					if (mapid==map->GetMapID()) {
+						currRow = iTexInfoRow;
+						mtl->updateTexmapButtons(mapid, currRow);
+						ICustButton *btn=GetICustButton(GetDlgItem(hWnd, texInfo[currRow].shortCtrlID));
+						if (btn) {
+							btn->SetDADMgr(mtl);
+							ReleaseICustButton(btn);
+						}
+					}
+				}
+			}
+		}
+	}
+
 public:
 	SkeletonMaterial *sm;
 
@@ -229,8 +398,14 @@ public:
 		int id = LOWORD(wParam);
 		switch (msg) 
 		{
-			case WM_INITDIALOG:
+			case WM_INITDIALOG: {
+				SkeletonMaterial *mtl=static_cast<SkeletonMaterial*>(map->GetParamBlock()->GetOwner());
+				if (mtl) {
+					//mtl->greyDlgControls(map);
+					shortmapsInit(mtl, hWnd, map);
+				}
 				break;
+			}
 			case WM_DESTROY:
 				break;
 			case WM_COMMAND: {
@@ -276,7 +451,7 @@ public:
 		
 		for (int i=0; i<NUM_PMAPS; i++) {
 			tmp=templateGenerator.GenerateTemplate(i, mtl->pblock, pmapInfo[i].title, 217);
-			pmaps[i]=CreateMParamMap2(i, mtl->pblock, ip, hInstance, hWnd, NULL, NULL, tmp, pmapInfo[i].title, pmapInfo[i].flags, NULL);
+			pmaps[i]=CreateMParamMap2(i, mtl->pblock, ip, hInstance, hWnd, NULL, NULL, tmp, pmapInfo[i].title, pmapInfo[i].flags, &dlgProc);
 			templateGenerator.ReleaseDlgTemplate(tmp);
 		}
 	}
@@ -316,6 +491,14 @@ void SkeletonMaterial::Reset() {
 }
 
 SkeletonMaterial::SkeletonMaterial(BOOL loading) {
+	static int pblockDesc_inited=false;
+	if (!pblockDesc_inited) {
+		initPBlockDesc(smtl_param_blk);
+		pblockDesc_inited=true;
+	}
+
+	for (int i=0; i<NSUBTEX; i++) subtex[i]=NULL;
+
 	pblock=NULL;
 	ivalid.SetEmpty();
 	SkelMtlCD.MakeAutoParamBlocks(this);	// make and intialize paramblock2
@@ -338,6 +521,23 @@ Interval SkeletonMaterial::Validity(TimeValue t) {
 	Interval temp=FOREVER;
 	Update(t, temp);
 	return ivalid;
+}
+
+int SkeletonMaterial::NumSubTexmaps() { return NSUBTEX; }
+
+Texmap* SkeletonMaterial::GetSubTexmap(int i) {
+	if (i<0 || i>=NSUBTEX) return NULL;
+	return pblock->GetTexmap(texInfo[i].texID);
+}
+
+void SkeletonMaterial::SetSubTexmap(int i, Texmap *m) {
+	if (i<0 || i>=NSUBTEX) return;
+	pblock->SetValue(texInfo[i].texID, 0, m);
+}
+
+TSTR SkeletonMaterial::GetSubTexmapSlotName(int i) {
+	if (i<0 || i>=NSUBTEX) return _T("???");
+	return texInfo[i].texName;
 }
 
 /*===========================================================================*\
@@ -368,8 +568,18 @@ RefResult SkeletonMaterial::NotifyRefChanged(NOTIFY_REF_CHANGED_ARGS) {
 		case REFMSG_CHANGE:
 			ivalid.SetEmpty();
 			if (hTarget==pblock) {
-				ParamID changing_param = pblock->LastNotifyParamID();
-				smtl_param_blk.InvalidateUI(changing_param);
+				ParamID paramID=pblock->LastNotifyParamID();
+
+				// If changed parameter is map or map related parameter (as _tex, _tex_on)
+				// we have to check if that param is presented in texInfo structure.
+				// If it is true then by received MapID and TexInfoRow 
+				// corresponding shortmap button text is actualized.
+				MapID inMapID=-1;
+				int inTexIR=-1;
+				findMapIDAndTexInfoRowByChangedParam(paramID, inMapID, inTexIR);
+				if (inMapID>=0 && inTexIR>=0)
+					updateTexmapButtons(inMapID, inTexIR);
+				smtl_param_blk.InvalidateUI(paramID);
 			}
 			break;
 	}
@@ -407,6 +617,117 @@ IOResult SkeletonMaterial::Load(ILoad *iload) {
 }
 
 /*===========================================================================*\
+ |	FROM DADMgr
+\*===========================================================================*/
+
+SClass_ID SkeletonMaterial::GetDragType(HWND hwnd, POINT p) {
+	return TEXMAP_CLASS_ID;
+}
+
+BOOL SkeletonMaterial::IsNew(HWND hwnd, POINT p, SClass_ID type) {
+	return FALSE;
+}
+
+ReferenceTarget* SkeletonMaterial::GetInstance(HWND hwnd, POINT p, SClass_ID type) {
+	int iRow = getRowBySelectedShortCtrl(hwnd);
+	if (iRow >= 0) 
+		return pblock->GetTexmap(texInfo[iRow].texID);
+	
+	return NULL;
+}
+
+BOOL SkeletonMaterial::OkToDrop(ReferenceTarget *dropThis, HWND hfrom, HWND hto, POINT p, SClass_ID type, BOOL isNew) {
+	return (type==TEXMAP_CLASS_ID);
+}
+
+HCURSOR SkeletonMaterial::DropCursor(ReferenceTarget *dropThis, HWND hfrom, HWND hto, POINT p, SClass_ID type, BOOL isNew) {
+	return NULL;
+}
+
+int SkeletonMaterial::SlotOwner() {
+	return OWNER_MTL_TEX;
+}
+
+#if GET_MAX_RELEASE(VERSION_3DSMAX) < 11900
+void SkeletonMaterial::Drop(ReferenceTarget *dropThis, HWND hwnd, POINT p, SClass_ID type) {
+#else
+void SkeletonMaterial::Drop(ReferenceTarget *dropThis, HWND hwnd, POINT p, SClass_ID type, DADMgr* srcMgr, BOOL bSrcClone) {
+#endif
+	drop(dropThis, hwnd, p, type, pblock);
+}
+
+void SkeletonMaterial::drop(ReferenceTarget *dropThis, HWND hwnd, POINT p, SClass_ID type, IParamBlock2 *pblock) {
+	int iRow = getRowBySelectedShortCtrl(hwnd);
+	if (iRow >= 0) {
+		IParamMap2 *mapTextures = pblock->GetMap(map_textures);
+		theHold.Begin();
+		pblock->SetValue(texInfo[iRow].texID, 0, (Texmap*) dropThis);
+		mapTextures->Invalidate(texInfo[iRow].texID);
+		theHold.Accept(_T("VRayALMtl set texture"));
+	}
+}
+
+void SkeletonMaterial::findMapIDAndTexInfoRowByChangedParam(ParamID inChangedParam, MapID &mapid, int &texInfoRow) {
+	for (int iTexInfoRow=0; iTexInfoRow<NSUBTEX ; ++iTexInfoRow) {
+		if ((texInfo[iTexInfoRow].texID == inChangedParam || texInfo[iTexInfoRow].texOnID == inChangedParam) &&
+			texInfo[iTexInfoRow].texShortID > -1) {
+			ParamDef pDef = pblock->GetParamDef(texInfo[iTexInfoRow].texShortID);
+			if (pDef.maps.Count() > 0)
+				mapid = pDef.maps[0];
+			texInfoRow = iTexInfoRow;
+			break;
+		}
+	}
+}
+
+int SkeletonMaterial::getRowBySelectedShortCtrl(HWND hwnd) {
+	HWND mapWnd;
+	MapID mapid;
+	IParamMap2 *map;
+	
+	for (int iTexInfoRow=0; iTexInfoRow<NSUBTEX ; ++iTexInfoRow) {
+		if (texInfo[iTexInfoRow].texShortID > -1) {
+			ParamDef pDef = pblock->GetParamDef(texInfo[iTexInfoRow].texShortID);
+			if (pDef.maps.Count() > 0) {
+				mapid = pDef.maps[0];
+				map = pblock->GetMap(mapid);
+				mapWnd=map->GetHWnd();
+				if (texInfo[iTexInfoRow].shortCtrlID && hwnd==GetDlgItem(mapWnd, texInfo[iTexInfoRow].shortCtrlID))
+					return iTexInfoRow;
+			}
+		}
+	}
+	
+	return -1;
+}
+
+int SkeletonMaterial::getMapState(int subtexno) {
+	Texmap* map = pblock->GetTexmap(texInfo[subtexno].texID);
+	if(!map) return 0;
+
+	int enabled;
+	Interval ivalid=FOREVER;
+	TimeValue t=GetCOREInterface()->GetTime();
+	pblock->GetValue(texInfo[subtexno].texOnID, t, enabled, ivalid);
+	if (!enabled) return 1;
+
+	return 2;
+}
+
+void SkeletonMaterial::updateTexmapButtons(MapID mapid, int subtexno) {
+	IParamMap2 *map;
+	if (!pblock || !(map=pblock->GetMap(mapid))) return;
+	
+	HWND hWnd=map->GetHWnd();
+
+	ICustButton *button=GetICustButton(GetDlgItem(hWnd, texInfo[subtexno].shortCtrlID));
+	if (button) {
+		button->SetText(externShortcutTexts[getMapState(subtexno)]);
+		ReleaseICustButton(button);
+	}
+}
+
+/*===========================================================================*\
  |	Updating and cloning
 \*===========================================================================*/
 
@@ -427,9 +748,24 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 	if (!ivalid.InInterval(t)) {
 		ivalid.SetInfinite();
 
+		// Sub-textures
+		for (int i=0; i<NSUBTEX; i++) {
+			subtex[i]=NULL;
+
+			pblock->GetValue(texInfo[i].texOnID, t, subtexOn[i], ivalid);
+			pblock->GetValue(texInfo[i].texMultID, t, subtexMult[i], ivalid);
+			if (fabsf(subtexMult[i])<1e-6f) subtexOn[i]=false;
+			subtexMult[i]*=0.01f;
+
+			if (subtexOn[i]) {
+				subtex[i]=pblock->GetTexmap(texInfo[i].texID);
+				if (subtex[i]) subtex[i]->Update(t, ivalid);
+			}
+		}
+
 		pblock->GetValue(mtl_reflect_roughness1, t, reflectRoughness1, ivalid);
 		pblock->GetValue(mtl_reflect_color1, t, reflectColor1, ivalid);
-		reflectStrength1=1.0f;
+		pblock->GetValue(mtl_reflect_strength1, t, reflectStrength1, ivalid);
 		pblock->GetValue(mtl_reflect_ior1, t, reflectIOR1, ivalid);
 
 		pblock->GetValue(mtl_diffuse, t, diffuse, ivalid);
