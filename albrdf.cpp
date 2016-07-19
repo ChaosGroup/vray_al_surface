@@ -52,6 +52,7 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 		params.reflectColor1.makeZero();
 	} else {
 		params.reflectRoughness1=VR::sqr(clamp(params.reflectRoughness1, 0.0f, 0.995f));
+		params.reflectRoughness2=VR::sqr(clamp(params.reflectRoughness2, 0.0f, 0.995f));
 
 		// Compute the normal matrix
 		if (dotf(rc.rayparams.viewDir, normal)>0.0f) computeNormalMatrix(rc, gnormal, nm);
@@ -290,7 +291,7 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
 	{ // Integrate secondary reflections
 		nrc.rayparams.currentMultResult=params.reflectColor2*viewFresnel2*reflectTransp;
 		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2, params.reflectRoughness2, eta2);
-		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x6763223);
+		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x3223AC2);
 		reflectTransp*=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor2.maxComponentValue());
 	}
 
