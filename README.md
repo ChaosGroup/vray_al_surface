@@ -1,7 +1,6 @@
 # vray_al_surface
 
 A (partial) V-Ray port of the alSurface shader
-==============================================
 
 General
 -------
