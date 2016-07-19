@@ -290,7 +290,7 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
 
 	{ // Integrate secondary reflections
 		nrc.rayparams.currentMultResult=params.reflectColor2*viewFresnel2*reflectTransp;
-		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2, params.reflectRoughness2, eta2);
+		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2*reflectTransp, params.reflectRoughness2, eta2);
 		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x3223AC2);
 		reflectTransp*=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor2.maxComponentValue());
 	}
