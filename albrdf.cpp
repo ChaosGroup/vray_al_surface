@@ -139,10 +139,9 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 	rc.mtlresult.clear();
 
-	Color reflectTransp(0.0f, 0.0f, 0.0f);
+	float reflectTransp=1.0f;
 	int reflectOpaque=true;
 	if (2!=doDiffuse && !dontTrace && nsamples!=0) {
-		float reflectTransp=1.0f;
 		rc.mtlresult.color+=computeReflections(rc, reflectTransp);
 		
 		reflectOpaque=(reflectTransp<1e-6f);
