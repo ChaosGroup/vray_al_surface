@@ -174,6 +174,9 @@ class SkeletonMaterial : public Mtl, public VR::VRenderMtl, public DADMgr {
 	// Evaluate a float texture and combine with a float.
 	float combineTex(const VR::VRayContext &rc, float origValue, int texIndex) const;
 
+	// Return a bumped normal, taking into account the bump map.
+	VR::Vector getBumpNormal(const VR::VRayContext &rc);
+
 public:
 	// various variables
 	Interval ivalid;
