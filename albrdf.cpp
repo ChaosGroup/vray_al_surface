@@ -59,6 +59,8 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 
 		inm=inverse(nm);
 	}
+
+	useMISForDiffuse=rc.vray->getSequenceData().globalLightManager->isGatheringPoint(rc);
 }
 
 // From BRDFSampler
@@ -124,7 +126,7 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 		if (cs<0.0f) cs=0.0f;
 		float probReflection=2.0f*cs;
 
-		float k=getReflectionWeight(probLight, probReflection);
+		float k=useMISForDiffuse? getReflectionWeight(probLight, probReflection) : 1.0f;
 		res+=(0.5f*probReflection*k)*(1.0f-params.sssMix)*(params.diffuse*lightColor);
 	}
 
@@ -197,9 +199,6 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 		diffusion_msgdata.sp[i]=ScatteringProfileDirectional(VR::Max(Rd[i], 0.001f), (params.sssDensityScale/radii[i]));
 	}
 
-	VR::Color result_sss_direct;
-	VR::Color result_sss_indirect;
-	
 	int directional=true;
 	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse);
 

@@ -80,6 +80,8 @@ protected:
 	float viewFresnel2;
 	float eta2;
 
+	int useMISForDiffuse; // true if the eval() method should use MIS for diffuse illumination.
+
 	virtual void computeNormalMatrix(const VRayContext &rc, const Vector &normal, Matrix &nm);
 
 	Color computeRawSSS(VRayContext &rc, const Color &diffuse);
