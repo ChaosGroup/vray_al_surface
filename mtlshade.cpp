@@ -58,18 +58,11 @@ void SkeletonMaterial::Shade(ShadeContext &sc) {
 	}
 }
 
-float SkeletonMaterial::EvalDisplacement(ShadeContext& sc)
-{
-	return 0.0f;
+float SkeletonMaterial::EvalDisplacement(ShadeContext& sc) {
+	if (!subtex[SUBTEXNO_DISPLACEMENT] || !subtexOn[SUBTEXNO_DISPLACEMENT] || subtexMult[SUBTEXNO_DISPLACEMENT]==0.0f) return 0.0f;
+	return subtex[SUBTEXNO_DISPLACEMENT]->EvalMono(sc)*subtexMult[SUBTEXNO_DISPLACEMENT];
 }
 
-Interval SkeletonMaterial::DisplacementValidity(TimeValue t)
-{
-	Interval iv;
-	iv.SetInfinite();
-	return iv;
-}
-	
 VR::Color SkeletonMaterial::combineTex(const VR::VRayContext &rc, const VR::Color &origColor, int texIndex) const {
 	if (!subtex[texIndex]) return origColor;
 

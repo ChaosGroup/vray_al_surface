@@ -797,6 +797,26 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 	valid &= ivalid;
 }
 
+Interval SkeletonMaterial::DisplacementValidity(TimeValue t) {
+	Interval valid=FOREVER;
+
+	int texOn=true;
+	pblock->GetValue(texInfo[SUBTEXNO_DISPLACEMENT].texOnID, t, texOn, valid);
+	if (!texOn) return valid;
+
+	Texmap *texmap=NULL;
+	float texMult=100.0f;
+
+	pblock->GetValue(texInfo[SUBTEXNO_DISPLACEMENT].texID, t, texmap, valid);
+	pblock->GetValue(texInfo[SUBTEXNO_DISPLACEMENT].texMultID, t, texMult, valid);
+
+	if (texmap) {
+		valid&=texmap->Validity(t);
+	}
+
+	return valid;
+}
+
 void SkeletonMaterial::renderBegin(TimeValue t, VR::VRayRenderer *vray) {
 	const VR::VRaySequenceData &sdata=vray->getSequenceData();
 	bsdfPool.init(sdata.maxRenderThreads);
