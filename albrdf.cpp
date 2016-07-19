@@ -241,7 +241,7 @@ protected:
 
 Color MyBaseBSDF::computeReflections(VRayContext &rc, Color &reflectFresnel) {
 	// Create a new context
-	VRayContext &nrc=rc.newSpawnContext(2, params.reflectColor1, RT_REFLECT | RT_GLOSSY | RT_ENVIRONMENT, normal);
+	VRayContext &nrc=rc.newSpawnContext(2, params.reflectColor1*viewFresnel1, RT_REFLECT | RT_GLOSSY | RT_ENVIRONMENT, normal);
 
 	// Set up the new context
 	nrc.rayparams.dDdx.makeZero(); // Zero out the directional derivatives
