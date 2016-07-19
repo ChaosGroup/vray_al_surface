@@ -238,6 +238,7 @@ public:
 	void Shade(ShadeContext& sc);
 	float EvalDisplacement(ShadeContext& sc); 
 	Interval DisplacementValidity(TimeValue t); 
+	ULONG LocalRequirements(int subMtlNum);
 
 	// SubMaterial access methods
 	int NumSubMtls() { return 0; }

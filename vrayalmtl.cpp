@@ -205,6 +205,8 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	map_textures, 0, IDS_PARAMETERS, 0, 0, NULL,
 
 	// params
+	DEFINE_SUBTEX(SUBTEXNO_BUMP, "bump_texture", 30.0f, -1000.0f, 1000.0f),
+
 	mtl_sssDensityScale, _FT("sss_density_scale"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 1e-6f, 1e6f,
@@ -353,7 +355,6 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_RADIUS, "sss3_radius_texture", 100.0f, 0.0f, 100.0f, map_sss3),
 
-	DEFINE_SUBTEX(SUBTEXNO_BUMP, "bump_texture", 30.0f, -1000.0f, 1000.0f),
 	DEFINE_SUBTEX(SUBTEXNO_DISPLACEMENT, "displacement_texture", 100.0f, 0.0f, 100.0f),
 PB_END
 );
@@ -815,6 +816,22 @@ Interval SkeletonMaterial::DisplacementValidity(TimeValue t) {
 	}
 
 	return valid;
+}
+
+ULONG SkeletonMaterial::LocalRequirements(int subMtlNum) {
+	ULONG res=0;
+	if (subtex[SUBTEXNO_DISPLACEMENT] && subtexOn[SUBTEXNO_DISPLACEMENT] && subtexMult[SUBTEXNO_DISPLACEMENT]!=0.0f) res|=MTLREQ_DISPLACEMAP;
+
+	int isOpaque=true;
+
+	if (fabsf(Intens(opacity)-1.0f)>1e-6f || (subtexOn[SUBTEXNO_OPACITY] && subtex[SUBTEXNO_OPACITY]!=NULL && fabsf(subtexMult[SUBTEXNO_OPACITY])>1e-6f)) {
+		isOpaque=false;
+	}
+
+	if (isOpaque) res|=VRAY_MTLREQ_OPAQUE_SHADOWS;
+	else res|=MTLREQ_TRANSP;
+
+	return res;
 }
 
 void SkeletonMaterial::renderBegin(TimeValue t, VR::VRayRenderer *vray) {
