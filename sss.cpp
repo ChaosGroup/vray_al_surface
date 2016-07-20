@@ -452,14 +452,10 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 		dmd->maxdist = R_max;
 		dmd->Po = rc.rayresult.wpoint;
 		dmd->No = rc.rayresult.normal;
-		float geom[3];
 		
 		memset(dmd->samples, 0, sizeof(DiffusionSample)*SSS_MAX_SAMPLES);
-		dmd->sss_depth = 0;
 
-		// Trace along the SSS ray, irradiating intersection points and accumulating the result.
-		VR::Color result_sss(0.0f, 0.0f, 0.0f);
-
+		// Trace along the SSS ray, irradiating intersection points.
 		VR::IntersectionData isData;
 		int transpIndex=0;
 		while (dmd->sss_depth<SSS_MAX_SAMPLES && dmd->maxdist>0.0f) {
@@ -476,9 +472,13 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 			nrc.rayparams.mint=nrc.rayresult.wpointCoeff;
 		}
 
-		// Process all the hits
+
+		// Process all the hits and accumulate SSS result
+		VR::Color result_sss(0.0f, 0.0f, 0.0f);
 		for (int i=0; i<dmd->sss_depth; i++) {
 			if (!dmd->samples[i].Rd.isBlack()) {
+				float geom[3];
+				
 				geom[0] = fabsf(VR::dotf(dmd->samples[i].Ng, Wsss));
 				geom[1] = fabsf(VR::dotf(dmd->samples[i].Ng, Usss));
 				geom[2] = fabsf(VR::dotf(dmd->samples[i].Ng, Vsss));

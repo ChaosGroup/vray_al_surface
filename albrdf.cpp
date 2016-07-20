@@ -45,11 +45,12 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	// Check if we need to trace the reflection
 	dontTrace=p_or(
 		p_or(rc.rayparams.totalLevel>=sdata.params.options.mtl_maxDepth, 0==sdata.params.options.mtl_reflectionRefraction),
-		p_and(0!=(rc.rayparams.rayType & RT_INDIRECT), !sdata.params.gi.reflectCaustics)
+		0!=(rc.rayparams.rayType & RT_INDIRECT) // p_and(0!=(rc.rayparams.rayType & RT_INDIRECT), !sdata.params.gi.reflectCaustics)
 	);
 
 	if (dontTrace) {
 		params.reflectColor1.makeZero();
+		params.reflectColor2.makeZero();
 	} else {
 		params.reflectRoughness1=VR::sqr(clamp(params.reflectRoughness1, 0.0f, 0.995f));
 		params.reflectRoughness2=VR::sqr(clamp(params.reflectRoughness2, 0.0f, 0.995f));
@@ -141,10 +142,9 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 	rc.mtlresult.clear();
 
 	float reflectTransp=1.0f;
-	int reflectOpaque=true;
+	int reflectOpaque=false;
 	if (2!=doDiffuse && !dontTrace && nsamples!=0) {
 		rc.mtlresult.color+=computeReflections(rc, reflectTransp);
-		
 		reflectOpaque=(reflectTransp<1e-6f);
 	}
 
