@@ -191,8 +191,14 @@ void alsIrradiateSample(
 	DiffusionSample& samp = dmd->samples[dmd->sss_depth];
 	samp.S = (rc.rayresult.wpoint - dmd->Po);
 	samp.r = VR::length(samp.S);
-	dmd->maxdist -= samp.r;
 	samp.Rd.set(0.0f, 0.0f, 0.0f);
+
+	// The original alSurface line below seems wrong, but looks like has no effect on Arnold;
+	// we probably only want to subtract just the distance from the previous SSS hit to this one.
+	// In the V-Ray version, I'm using the fact that the direction along the SSS ray is a unit
+	// one, so I can just use the hit ray coefficient.
+	// dmd->maxdist -= samp.r;
+	dmd->maxdist -= float(rc.rayresult.wpointCoeff-rc.rayparams.mint);
 
 	// if we're not using trace sets to explicitly define what objects we want to trace against, then assume we only want to trace against ourselves
 	// or if we're not doing sss in this shader, just continue the ray
@@ -266,13 +272,13 @@ void alsIrradiateSample(
 		}
 	}*/
 
-	VR::Vector U, V;
-	VR::computeTangentVectors(rc.rayresult.normal, U, V);
-
 	// Calculate the indirect lighting if GI in V-Ray is enabled.
 	VR::Color result_indirect(0.0f, 0.0f, 0.0f);
 
 	if (rc.vray->getSequenceData().params.gi.indirectOn) {
+		VR::Vector U, V;
+		VR::computeTangentVectors(rc.rayresult.normal, U, V);
+
 		VR::VRayContext &nrc=rc.newSpawnContext(0, VR::Color(1.0f, 1.0f, 1.0f), VR::RT_INDIRECT | VR::RT_ENVIRONMENT, rc.rayresult.gnormal);
 
 		for (int i=0; i<1; i++)
@@ -455,16 +461,23 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 		VR::Color result_sss(0.0f, 0.0f, 0.0f);
 
 		VR::IntersectionData isData;
-		for (int i=0; i<SSS_MAX_SAMPLES && dmd->maxdist>0.0f; i++) {
+		int transpIndex=0;
+		while (dmd->sss_depth<SSS_MAX_SAMPLES && dmd->maxdist>0.0f) {
 			isData.clear();
 			int res=nrc.vray->findIntersection(nrc, &isData);
 			if (!res) break;
 
-			// Shade the hit (result is stored in i-th element of the samples array in the dmd structure)
-			nrc.setRayResult(res, &isData, i);
+			// Shade the hit (result is stored in next element of the samples array in the dmd structure)
+			nrc.setRayResult(res, &isData, transpIndex++);
 			alsIrradiateSample(nrc, dmd, diffuse);
 
-			// Process the hit
+			// Continue the ray
+			nrc.rayparams.skipTag=nrc.rayresult.skipTag;
+			nrc.rayparams.mint=nrc.rayresult.wpointCoeff;
+		}
+
+		// Process all the hits
+		for (int i=0; i<dmd->sss_depth; i++) {
 			if (!dmd->samples[i].Rd.isBlack()) {
 				geom[0] = fabsf(VR::dotf(dmd->samples[i].Ng, Wsss));
 				geom[1] = fabsf(VR::dotf(dmd->samples[i].Ng, Usss));
@@ -494,10 +507,6 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 			}
 
 			vassert(VR::fastfinite(result_sss.sum()));
-
-			// Continue the ray
-			nrc.rayparams.skipTag=nrc.rayresult.skipTag;
-			nrc.rayparams.mint=nrc.rayresult.wpointCoeff;
 		}
 
 		return result_sss;
