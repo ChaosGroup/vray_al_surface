@@ -99,6 +99,8 @@ enum {
 	mtl_sss_weight3_tex, mtl_sss_weight3_tex_on, mtl_sss_weight3_tex_mult, mtl_sss_weight3_tex_shortmap,
 	mtl_sss_color3_tex, mtl_sss_color3_tex_on, mtl_sss_color3_tex_mult, mtl_sss_color3_tex_shortmap,
 	mtl_sss_radius3_tex, mtl_sss_radius3_tex_on, mtl_sss_radius3_tex_mult, mtl_sss_radius3_tex_shortmap,
+
+	mtl_sssMode,
 };
 
 enum {
@@ -150,7 +152,7 @@ struct ALMtlTexInfo;
  |	SkeletonMaterial class defn
 \*===========================================================================*/
 
-class SkeletonMaterial : public Mtl, public VR::VRenderMtl, public DADMgr {
+class SkeletonMaterial : public Mtl, public VR::VRenderMtl, public DADMgr, public PostLoadCallback {
 	VR::BRDFPool<MyALBSDF> bsdfPool;
 	VR::LayeredBSDFRenderChannels renderChannels;
 
@@ -177,6 +179,8 @@ class SkeletonMaterial : public Mtl, public VR::VRenderMtl, public DADMgr {
 	// Return a bumped normal, taking into account the bump map.
 	VR::Vector getBumpNormal(const VR::VRayContext &rc);
 
+	// The version of the material; used when loading older versions to convert some parameters.
+	int version;
 public:
 	// various variables
 	Interval ivalid;
@@ -196,6 +200,7 @@ public:
 	Color diffuse;
 	float diffuseStrength;
 
+	int sssMode;
 	float sssMix;
 	float sssDensityScale;
 	float sssRadius1, sssRadius2, sssRadius3;
@@ -308,6 +313,9 @@ public:
 	
 	void addRenderChannel(int index) VRAY_OVERRIDE;
 	VR::VRayVolume* getVolume(const VR::VRayContext &rc) VRAY_OVERRIDE;
+
+	// From PostLoadCallback
+	void proc(ILoad *iload) VRAY_OVERRIDE;
 };
 
 /*===========================================================================*\

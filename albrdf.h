@@ -17,6 +17,8 @@ struct ALBSDFParams {
 	int subdivs;
 	Color transparency;
 	int doubleSided;
+
+	int sssMode; // 0 - diffusion; 1 - directional.
 	float sssMix;
 
 	float sssWeight1;

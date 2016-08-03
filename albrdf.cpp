@@ -199,7 +199,7 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 		diffusion_msgdata.sp[i]=ScatteringProfileDirectional(VR::Max(Rd[i], 0.001f), (params.sssDensityScale/radii[i]));
 	}
 
-	int directional=true;
+	int directional=params.sssMode;
 	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse);
 
 	return result_sss;

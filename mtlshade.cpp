@@ -136,6 +136,7 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	params.subdivs=8;
 	params.doubleSided=true;
 
+	params.sssMode=sssMode;
 	params.sssMix=combineTex(rc, sssMix, SUBTEXNO_SSS_MIX);
 
 	params.sssWeight1=combineTex(rc, sssWeight1, SUBTEXNO_SSS1_WEIGHT);

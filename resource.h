@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
-// Used by vrayblendmtl.rc
+// Microsoft Visual C++ generated include file.
+// Used by vrayalmtl.rc
 //
 #define IDS_CLASSNAME                   1
 #define IDS_PARAMETERS                  2
@@ -10,9 +10,11 @@
 #define ids_baseMtl                     5
 #define IDS_MTL1ON                      6
 #define ids_baseMtl_on                  6
+#define ids_sss_mode_diffusion          6
 #define ids_giMtl                       7
 #define ids_coatMtl                     7
 #define ids_giMtl_on                    8
+#define ids_sss_mode_directional        8
 #define ids_reflectMtl                  9
 #define ids_reflectMtl_on               10
 #define ids_refractMtl                  11

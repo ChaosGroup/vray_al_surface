@@ -6,14 +6,7 @@
 #include "vrayalmtl.h"
 #include "pb2template_generator.h"
 
-// no param block script access for VRay free
-#ifdef _FREE_
-#define _FT(X) _T("")
-#define IS_PUBLIC 0
-#else
-#define _FT(X) _T(X)
-#define IS_PUBLIC 1
-#endif // _FREE_
+#define CURRENT_VERSION 1
 
 struct ALMtlTexInfo {
 	ParamID texID;
@@ -71,7 +64,7 @@ class SkeletonMaterialClassDesc: public ClassDesc2
 {
 	HIMAGELIST imageList;
 public:
-	int IsPublic() { return IS_PUBLIC; }
+	int IsPublic() { return 1; }
 	void* Create(BOOL loading) { return new SkeletonMaterial(loading); }
 	const TCHAR *	ClassName() { return STR_CLASSNAME; }
 	SClass_ID SuperClassID() { return MATERIAL_CLASS_ID; }
@@ -159,34 +152,34 @@ static int numID=100;
 int ctrlID(void) { return numID++; }
 
 #define DEFINE_SUBTEX(subtexIndex, texName, defMult, rangeMin, rangeMax) \
-	texInfo[subtexIndex].texID, _FT(texName), TYPE_TEXMAP, 0, 0,\
+	texInfo[subtexIndex].texID, _T(texName), TYPE_TEXMAP, 0, 0,\
 		p_subtexno, subtexIndex,\
 		p_ui, map_textures, TYPE_TEXMAPBUTTON, ctrlID(),\
 	PB_END,\
-	texInfo[subtexIndex].texOnID, _FT(texName) _FT("_on"), TYPE_BOOL, 0, 0,\
+	texInfo[subtexIndex].texOnID, _T(texName) _T("_on"), TYPE_BOOL, 0, 0,\
 		p_default, TRUE,\
 		p_ui, map_textures, TYPE_SINGLECHEKBOX, ctrlID(),\
 	PB_END,\
-	texInfo[subtexIndex].texMultID, _FT(texName) _FT("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
+	texInfo[subtexIndex].texMultID, _T(texName) _T("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
 		p_default, defMult,\
 		p_range, rangeMin, rangeMax,\
 		p_ui, map_textures, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 1.0f,\
 	PB_END
 
 #define DEFINE_SUBTEX_SHORTMAP(subtexIndex, texName, defMult, rangeMin, rangeMax, mapID) \
-	texInfo[subtexIndex].texShortID, _FT(texName) _T("_shortmap"), TYPE_TEXMAP, P_NO_AUTO_LABELS + P_INVISIBLE + P_TRANSIENT + P_OBSOLETE, 0,\
+	texInfo[subtexIndex].texShortID, _T(texName) _T("_shortmap"), TYPE_TEXMAP, P_NO_AUTO_LABELS + P_INVISIBLE + P_TRANSIENT + P_OBSOLETE, 0,\
 		p_subtexno, subtexIndex,\
 		p_ui, mapID, TYPE_TEXMAPBUTTON, texInfo[subtexIndex].shortCtrlID = ctrlID(),\
 	PB_END,\
-	texInfo[subtexIndex].texID, _FT(texName), TYPE_TEXMAP, 0, 0,\
+	texInfo[subtexIndex].texID, _T(texName), TYPE_TEXMAP, 0, 0,\
 		p_subtexno, subtexIndex,\
 		p_ui, map_textures, TYPE_TEXMAPBUTTON, ctrlID(),\
 	PB_END,\
-	texInfo[subtexIndex].texOnID, _FT(texName) _FT("_on"), TYPE_BOOL, 0, 0,\
+	texInfo[subtexIndex].texOnID, _T(texName) _T("_on"), TYPE_BOOL, 0, 0,\
 		p_default, TRUE,\
 		p_ui, map_textures, TYPE_SINGLECHEKBOX, ctrlID(),\
 	PB_END,\
-	texInfo[subtexIndex].texMultID, _FT(texName) _FT("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
+	texInfo[subtexIndex].texMultID, _T(texName) _T("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
 		p_default, defMult,\
 		p_range, rangeMin, rangeMax,\
 		p_ui, map_textures, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 1.0f,\
@@ -207,31 +200,31 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	// params
 	DEFINE_SUBTEX(SUBTEXNO_BUMP, "bump_texture", 30.0f, -1000.0f, 1000.0f),
 
-	mtl_sssDensityScale, _FT("sss_density_scale"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssDensityScale, _T("sss_density_scale"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 1e-6f, 1e6f,
 		p_ui, map_basic, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
-	mtl_opacity, _FT("opacity"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_opacity, _T("opacity"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(1.0f, 1.0f, 1.0f),
 		p_ui, map_basic, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_OPACITY, "opacity_texture", 100.0f, 0.0f, 100.0f, map_basic),
 
-	mtl_diffuse, _FT("diffuse_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_diffuse, _T("diffuse_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.5f, 0.5f, 0.5f),
 		p_ui, map_diffuse, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_DIFFUSE, "diffuse_color_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
 
-	mtl_diffuseStrength, _FT("diffuse_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_diffuseStrength, _T("diffuse_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_DIFFUSE_STRENGTH, "diffuse_strength_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
 	
-	mtl_sssMix, _FT("sss_mix"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssMix, _T("sss_mix"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
@@ -239,27 +232,27 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS_MIX, "sss_mix_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
 
 	// Reflection 1
-	mtl_reflect_color1, _FT("reflect1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_reflect_color1, _T("reflect1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.0f, 0.0f, 0.0f),
 		p_ui, map_reflect1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_COLOR, "reflect1_color_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
 
-	mtl_reflect_strength1, _FT("reflect1_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_strength1, _T("reflect1_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_STRENGTH, "reflect1_strength_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
 
-	mtl_reflect_roughness1, _FT("reflect1_roughness"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_roughness1, _T("reflect1_roughness"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.5f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_ROUGHNESS, "reflect1_roughness_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
 	
-	mtl_reflect_ior1, _FT("reflect1_ior"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_ior1, _T("reflect1_ior"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.4f,
 		p_range, 1.0f, 999.0f,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
@@ -267,27 +260,27 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_IOR, "reflect1_ior_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
 	
 	// Reflection 2
-	mtl_reflect_color2, _FT("reflect2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_reflect_color2, _T("reflect2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.0f, 0.0f, 0.0f),
 		p_ui, map_reflect2, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_COLOR, "reflect2_color_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
 
-	mtl_reflect_strength2, _FT("reflect2_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_strength2, _T("reflect2_strength"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_STRENGTH, "reflect2_strength_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
 
-	mtl_reflect_roughness2, _FT("reflect2_roughness"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_roughness2, _T("reflect2_roughness"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.5f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_ROUGHNESS, "reflect2_roughness_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
 	
-	mtl_reflect_ior2, _FT("reflect2_ior"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_reflect_ior2, _T("reflect2_ior"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.4f,
 		p_range, 1.0f, 999.0f,
 		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
@@ -295,60 +288,66 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_IOR, "reflect2_ior_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
 
 	// SSS
-	mtl_sssColor1, _FT("sss1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_sssMode, _T("sss_mode"), TYPE_INT, 0, 0,
+		p_range, 0, 1,
+		p_default, 0,
+		p_ui, map_diffuse, TYPE_INTLISTBOX, ctrlID(), 2, ids_sss_mode_diffusion, ids_sss_mode_directional,
+	PB_END,
+
+	mtl_sssColor1, _T("sss1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.439f, 0.156f, 0.078f),
 		p_ui, map_sss1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS1_COLOR, "sss1_color_texture", 100.0f, 0.0f, 100.0f, map_sss1),
 
-	mtl_sssWeight1, _FT("sss1_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssWeight1, _T("sss1_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_sss1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS1_WEIGHT, "sss1_weight_texture", 100.0f, 0.0f, 100.0f, map_sss1),
 
-	mtl_sssRadius1, _FT("sss1_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssRadius1, _T("sss1_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.5f,
 		p_range, 0.0f, 1e6f,
 		p_ui, map_sss1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS1_RADIUS, "sss1_radius_texture", 100.0f, 0.0f, 100.0f, map_sss1),
 
-	mtl_sssColor2, _FT("sss2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_sssColor2, _T("sss2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.439f, 0.08f, 0.018f),
 		p_ui, map_sss2, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS2_COLOR, "sss2_color_texture", 100.0f, 0.0f, 100.0f, map_sss2),
 
-	mtl_sssWeight2, _FT("sss2_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssWeight2, _T("sss2_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_sss2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS2_WEIGHT, "sss2_weight_texture", 100.0f, 0.0f, 100.0f, map_sss2),
 
-	mtl_sssRadius2, _FT("sss2_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssRadius2, _T("sss2_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 4.0f,
 		p_range, 0.0f, 1e6f,
 		p_ui, map_sss2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS2_RADIUS, "sss2_radius_texture", 100.0f, 0.0f, 100.0f, map_sss2),
 
-	mtl_sssColor3, _FT("sss3_color"), TYPE_RGBA, P_ANIMATABLE, 0,
+	mtl_sssColor3, _T("sss3_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.523f, 0.637f, 0.667f),
 		p_ui, map_sss3, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_COLOR, "sss3_color_texture", 100.0f, 0.0f, 100.0f, map_sss3),
 
-	mtl_sssWeight3, _FT("sss3_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssWeight3, _T("sss3_weight"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 1.0f,
 		p_range, 0.0f, 1.0f,
 		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_WEIGHT, "sss3_weight_texture", 100.0f, 0.0f, 100.0f, map_sss3),
 
-	mtl_sssRadius3, _FT("sss3_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
+	mtl_sssRadius3, _T("sss3_radius"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, 0.75f,
 		p_range, 0.0f, 1e6f,
 		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
@@ -500,6 +499,8 @@ SkeletonMaterial::SkeletonMaterial(BOOL loading) {
 
 	for (int i=0; i<NSUBTEX; i++) subtex[i]=NULL;
 
+	version=CURRENT_VERSION;
+
 	pblock=NULL;
 	ivalid.SetEmpty();
 	SkelMtlCD.MakeAutoParamBlocks(this);	// make and intialize paramblock2
@@ -507,11 +508,6 @@ SkeletonMaterial::SkeletonMaterial(BOOL loading) {
 
 ParamDlg* SkeletonMaterial::CreateParamDlg(HWND hwMtlEdit, IMtlParams *imp) {
 	return new SkelMtlParamDlg(this, hwMtlEdit, imp);
-	/*
-	IAutoMParamDlg* masterDlg = SkelMtlCD.CreateParamDlgs(hwMtlEdit, imp, this);
-	smtl_param_blk.SetUserDlgProc(new SkelMtlDlgProc(this));
-	return masterDlg;
-	*/
 }
 
 BOOL SkeletonMaterial::SetDlgThing(ParamDlg* dlg) {
@@ -592,6 +588,7 @@ RefResult SkeletonMaterial::NotifyRefChanged(NOTIFY_REF_CHANGED_ARGS) {
 \*===========================================================================*/
 
 #define MTL_HDR_CHUNK 0x4000
+#define MTL_VERSION_CHUNK 0x4001
 
 IOResult SkeletonMaterial::Save(ISave *isave) { 
 	IOResult res;
@@ -599,10 +596,22 @@ IOResult SkeletonMaterial::Save(ISave *isave) {
 	res = MtlBase::Save(isave);
 	if (res!=IO_OK) return res;
 	isave->EndChunk();
+	
+	ULONG nwr=0;
+
+	isave->BeginChunk(MTL_VERSION_CHUNK);
+	res=isave->Write(&version, sizeof(version), &nwr);
+	if (res!=IO_OK) return res;
+	isave->EndChunk();
+
 	return IO_OK;
 }	
 
 IOResult SkeletonMaterial::Load(ILoad *iload) { 
+	// Set the version to be the oldest possible version
+	version=0;
+	iload->RegisterPostLoadCallback(this);
+
 	IOResult res;
 	int id;
 	while (IO_OK==(res=iload->OpenChunk())) {
@@ -610,11 +619,26 @@ IOResult SkeletonMaterial::Load(ILoad *iload) {
 			case MTL_HDR_CHUNK:
 				res = MtlBase::Load(iload);
 				break;
+			case MTL_VERSION_CHUNK: {
+				ULONG nr;
+				res=iload->Read(&version, sizeof(version), &nr);
+				break;
+			}
 		}
 		iload->CloseChunk();
-		if (res!=IO_OK) return res;
+		if (res!=IO_OK)
+			return res;
 	}
 	return IO_OK;
+}
+
+void SkeletonMaterial::proc(ILoad *iload) {
+	if (version<1) {
+		// In the initial version, "directional" was the default SSS mode, so change to that when
+		// loading old materials.
+		pblock->SetValue(mtl_sssMode, 0, 1);
+	}
+	version=CURRENT_VERSION;
 }
 
 /*===========================================================================*\
@@ -778,6 +802,7 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 		pblock->GetValue(mtl_opacity, t, opacity, ivalid);
 
 		pblock->GetValue(mtl_sssMix, t, sssMix, ivalid);
+		pblock->GetValue(mtl_sssMode, t, sssMode, ivalid);
 
 		pblock->GetValue(mtl_sssWeight1, t, sssWeight1, ivalid);
 		pblock->GetValue(mtl_sssRadius1, t, sssRadius1, ivalid);
