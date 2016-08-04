@@ -101,6 +101,8 @@ enum {
 	mtl_sss_radius3_tex, mtl_sss_radius3_tex_on, mtl_sss_radius3_tex_mult, mtl_sss_radius3_tex_shortmap,
 
 	mtl_sssMode,
+	mtl_reflect_distribution1,
+	mtl_reflect_distribution2,
 };
 
 enum {
@@ -190,11 +192,13 @@ public:
 	Color reflectColor1;
 	float reflectStrength1;
 	float reflectIOR1;
+	int reflectDistribution1;
 
 	float reflectRoughness2;
 	Color reflectColor2;
 	float reflectStrength2;
 	float reflectIOR2;
+	int reflectDistribution2;
 
 	Color opacity;
 	Color diffuse;

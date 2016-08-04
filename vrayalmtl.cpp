@@ -258,7 +258,13 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_reflect1, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_IOR, "reflect1_ior_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
-	
+
+	mtl_reflect_distribution1, _T("reflect1_distribution"), TYPE_INT, 0, 0,
+		p_range, 0, 1,
+		p_default, 0,
+		p_ui, map_reflect1, TYPE_INTLISTBOX, ctrlID(), 2, ids_reflect_distribution_beckmann, ids_reflect_distribution_GGX,
+	PB_END,
+
 	// Reflection 2
 	mtl_reflect_color2, _T("reflect2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, Color(0.0f, 0.0f, 0.0f),
@@ -286,6 +292,12 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_reflect2, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_IOR, "reflect2_ior_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
+
+	mtl_reflect_distribution2, _T("reflect2_distribution"), TYPE_INT, 0, 0,
+		p_range, 0, 1,
+		p_default, 0,
+		p_ui, map_reflect2, TYPE_INTLISTBOX, ctrlID(), 2, ids_reflect_distribution_beckmann, ids_reflect_distribution_GGX,
+	PB_END,
 
 	// SSS
 	mtl_sssMode, _T("sss_mode"), TYPE_INT, 0, 0,
@@ -637,6 +649,10 @@ void SkeletonMaterial::proc(ILoad *iload) {
 		// In the initial version, "directional" was the default SSS mode, so change to that when
 		// loading old materials.
 		pblock->SetValue(mtl_sssMode, 0, 1);
+
+		// In the old version, the reflection distribution was always GGX, so change to that.
+		pblock->SetValue(mtl_reflect_distribution1, 0, 1);
+		pblock->SetValue(mtl_reflect_distribution2, 0, 1);
 	}
 	version=CURRENT_VERSION;
 }
@@ -792,11 +808,13 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 		pblock->GetValue(mtl_reflect_color1, t, reflectColor1, ivalid);
 		pblock->GetValue(mtl_reflect_strength1, t, reflectStrength1, ivalid);
 		pblock->GetValue(mtl_reflect_ior1, t, reflectIOR1, ivalid);
+		pblock->GetValue(mtl_reflect_distribution1, t, reflectDistribution1, ivalid);
 
 		pblock->GetValue(mtl_reflect_roughness2, t, reflectRoughness2, ivalid);
 		pblock->GetValue(mtl_reflect_color2, t, reflectColor2, ivalid);
 		pblock->GetValue(mtl_reflect_strength2, t, reflectStrength2, ivalid);
 		pblock->GetValue(mtl_reflect_ior2, t, reflectIOR2, ivalid);
+		pblock->GetValue(mtl_reflect_distribution2, t, reflectDistribution2, ivalid);
 
 		pblock->GetValue(mtl_diffuse, t, diffuse, ivalid);
 		pblock->GetValue(mtl_opacity, t, opacity, ivalid);

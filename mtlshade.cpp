@@ -126,13 +126,13 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	params.reflectColor1*=combineTex(rc, reflectStrength1, SUBTEXNO_REFLECT1_STRENGTH);
 	params.reflectRoughness1=combineTex(rc, reflectRoughness1, SUBTEXNO_REFLECT1_ROUGHNESS);
 	params.reflectIOR1=combineTex(rc, reflectIOR1, SUBTEXNO_REFLECT1_IOR);
-	params.reflectMode1=VR::alReflectDistribution_beckmann;
+	params.reflectMode1=(reflectDistribution1==0? VR::alReflectDistribution_beckmann : VR::alReflectDistribution_GGX);
 
 	params.reflectColor2=combineTex(rc, toColor(reflectColor2), SUBTEXNO_REFLECT2_COLOR);
 	params.reflectColor2*=combineTex(rc, reflectStrength2, SUBTEXNO_REFLECT2_STRENGTH);
 	params.reflectRoughness2=combineTex(rc, reflectRoughness2, SUBTEXNO_REFLECT2_ROUGHNESS);
 	params.reflectIOR2=combineTex(rc, reflectIOR2, SUBTEXNO_REFLECT2_IOR);
-	params.reflectMode2=VR::alReflectDistribution_beckmann;
+	params.reflectMode2=(reflectDistribution2==0? VR::alReflectDistribution_beckmann : VR::alReflectDistribution_GGX);
 
 	params.transparency=combineTex(rc, toColor(opacity), SUBTEXNO_OPACITY).whiteComplement();
 	params.subdivs=8;

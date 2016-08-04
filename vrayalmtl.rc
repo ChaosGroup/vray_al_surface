@@ -182,7 +182,6 @@ BEGIN
         LEFTMARGIN, 4
         RIGHTMARGIN, 213
         TOPMARGIN, 4
-        BOTTOMMARGIN, 202
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -203,6 +202,8 @@ BEGIN
     ids_sss_mode_diffusion  "Diffusion"
     ids_coatMtl             "coatMtl"
     ids_sss_mode_directional "Directional"
+    ids_reflect_distribution_beckmann "Beckmann"
+    ids_reflect_distribution_GGX "GGX"
     ids_blend               "blend"
     ids_texmap_blend        "texmap_blend"
     ids_texmap_blend_mult   "texmap_blend_mult"

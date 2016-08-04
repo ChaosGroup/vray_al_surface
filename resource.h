@@ -16,7 +16,9 @@
 #define ids_giMtl_on                    8
 #define ids_sss_mode_directional        8
 #define ids_reflectMtl                  9
+#define ids_reflect_distribution_beckmann 9
 #define ids_reflectMtl_on               10
+#define ids_reflect_distribution_GGX    10
 #define ids_refractMtl                  11
 #define ids_refractMtl_on               12
 #define ids_blend                       13
