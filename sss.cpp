@@ -458,6 +458,7 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 		// Trace along the SSS ray, irradiating intersection points.
 		VR::IntersectionData isData;
 		int transpIndex=0;
+		float step=1e-6f;
 		while (dmd->sss_depth<SSS_MAX_SAMPLES && dmd->maxdist>0.0f) {
 			isData.clear();
 			int res=nrc.vray->findIntersection(nrc, &isData);
@@ -467,9 +468,11 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 			nrc.setRayResult(res, &isData, transpIndex++);
 			alsIrradiateSample(nrc, dmd, diffuse);
 
-			// Continue the ray
+			// Continue the ray making sure we don't get caught between two surfaces.
 			nrc.rayparams.skipTag=nrc.rayresult.skipTag;
-			nrc.rayparams.mint=nrc.rayresult.wpointCoeff;
+			if (fabs(nrc.rayparams.mint-nrc.rayresult.wpointCoeff)<1e-12f) step*=2.0f;
+			else step=1e-6f;
+			nrc.rayparams.mint=nrc.rayresult.wpointCoeff+nrc.rayresult.wpointCoeff*step;
 		}
 
 
