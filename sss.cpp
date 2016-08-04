@@ -34,8 +34,8 @@ ScatteringProfileDirectional::ScatteringProfileDirectional(float Rd, float scale
 	alpha_prime = sigma_s_prime / sigma_t_prime;
 
 	D = (2*sigma_t_prime) / (3*VR::sqr(sigma_t_prime));
-	sigma_tr = sqrt(sigma_a / D);
-	de = 2.131 * D / sqrt(alpha_prime);
+	sigma_tr = sqrtf(sigma_a / D);
+	de = 2.131f * D / sqrtf(alpha_prime);
 	zr = 1.0f / sigma_t_prime;
 
 	vassert(VR::fastfinite(D));
@@ -67,8 +67,8 @@ ScatteringProfileDirectional::ScatteringProfileDirectional(float sigma_s, float 
 	alpha_prime = sigma_s_prime / sigma_t_prime;
 
 	D = (2*sigma_t_prime) / (3*VR::sqr(sigma_t_prime));
-	sigma_tr = sqrt(sigma_a / D);
-	de = 2.131 * D / sqrt(alpha_prime);
+	sigma_tr = sqrtf(sigma_a / D);
+	de = 2.131f * D / sqrtf(alpha_prime);
 	zr = 1.0f / sigma_t_prime;
 
 	vassert(VR::fastfinite(D));

@@ -213,7 +213,7 @@ inline float directionalDipole(VR::Vector xi, VR::Vector ni, VR::Vector xo, VR::
 	const float mu0 = -VR::dotf(ni, wr);
 	if (mu0 > 0.0) 
 	{
-		dr = sqrtf((sp.D * mu0) * ((sp.D * mu0) - sp.de * cos_beta * 2.0) + r * r);
+		dr = sqrtf((sp.D * mu0) * ((sp.D * mu0) - sp.de * cos_beta * 2.0f) + r * r);
 	} 
 	else 
 	{

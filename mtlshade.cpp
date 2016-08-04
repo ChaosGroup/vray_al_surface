@@ -126,17 +126,19 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	params.reflectColor1*=combineTex(rc, reflectStrength1, SUBTEXNO_REFLECT1_STRENGTH);
 	params.reflectRoughness1=combineTex(rc, reflectRoughness1, SUBTEXNO_REFLECT1_ROUGHNESS);
 	params.reflectIOR1=combineTex(rc, reflectIOR1, SUBTEXNO_REFLECT1_IOR);
+	params.reflectMode1=VR::alReflectDistribution_beckmann;
 
 	params.reflectColor2=combineTex(rc, toColor(reflectColor2), SUBTEXNO_REFLECT2_COLOR);
 	params.reflectColor2*=combineTex(rc, reflectStrength2, SUBTEXNO_REFLECT2_STRENGTH);
 	params.reflectRoughness2=combineTex(rc, reflectRoughness2, SUBTEXNO_REFLECT2_ROUGHNESS);
 	params.reflectIOR2=combineTex(rc, reflectIOR2, SUBTEXNO_REFLECT2_IOR);
+	params.reflectMode2=VR::alReflectDistribution_beckmann;
 
 	params.transparency=combineTex(rc, toColor(opacity), SUBTEXNO_OPACITY).whiteComplement();
 	params.subdivs=8;
 	params.doubleSided=true;
 
-	params.sssMode=sssMode;
+	params.sssMode=(sssMode==0? VR::alSSSMode_diffusion : VR::alSSSMode_directional);
 	params.sssMix=combineTex(rc, sssMix, SUBTEXNO_SSS_MIX);
 
 	params.sssWeight1=combineTex(rc, sssWeight1, SUBTEXNO_SSS1_WEIGHT);

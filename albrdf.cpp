@@ -6,6 +6,7 @@
 #include "albrdf.h"
 #include "sss.h"
 #include "vraydmcsampler.h"
+#include "beckmann.h"
 
 using namespace VUtils;
 
@@ -93,7 +94,9 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 	if (!dontTrace && 0!=(flags & FBRDF_SPECULAR)) {
 		if (params.reflectRoughness1>=1e-6f) {
 			float probReflection=0.0f;
-			float brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness1, 2.0f, normal, nm, inm, probReflection, false);
+			float brdfValue=0.0f;
+			if (params.reflectMode1==alReflectDistribution_GGX) brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness1, 2.0f, normal, nm, inm, probReflection, false);
+			else brdfValue=beckmannBRDF(rc.rayparams.viewDir, direction, params.reflectRoughness1, normal, nm, inm, probReflection);
 
 			float k=getReflectionWeight(probLight, probReflection);
 			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, normal, eta1);
@@ -108,7 +111,9 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 
 		if (params.reflectRoughness2>=1e-6f) {
 			float probReflection=0.0f;
-			float brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness2, 2.0f, normal, nm, inm, probReflection, false);
+			float brdfValue=0.0f;
+			if (params.reflectMode2==alReflectDistribution_GGX) brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness2, 2.0f, normal, nm, inm, probReflection, false);
+			else brdfValue=beckmannBRDF(rc.rayparams.viewDir, direction, params.reflectRoughness2, normal, nm, inm, probReflection);
 
 			float k=getReflectionWeight(probLight, probReflection);
 			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, normal, eta2);
@@ -199,14 +204,16 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 		diffusion_msgdata.sp[i]=ScatteringProfileDirectional(VR::Max(Rd[i], 0.001f), (params.sssDensityScale/radii[i]));
 	}
 
-	int directional=params.sssMode;
+	bool directional=(params.sssMode==alSSSMode_directional);
 	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse);
 
 	return result_sss;
 }
 
 struct ReflectionsSampler: AdaptiveColorSampler {
-	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf, const VR::Color &color, float roughness, float eta):fresnelSum(0.0f), bsdf(bsdf), color(color), roughness(roughness), eta(eta) {}
+	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf, const VR::Color &color, float roughness, float eta, ALReflectDistribution mode)
+		:fresnelSum(0.0f), bsdf(bsdf), color(color), roughness(roughness), eta(eta), mode(mode)
+	{}
 
 	VR::Color sampleColor(const VR::VRayContext &rc, VR::VRayContext &nrc, float uc, VR::ValidType &valid) VRAY_OVERRIDE {
 		Vector dir;
@@ -223,7 +230,11 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 			if (r0*r1<0.0f) dir=getReflectDir(rc.rayparams.viewDir, gnormal);
 		} else {
 			// Compute a reflection direction
-			dir=ggxDirMixed(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, 2.0f, rc.rayparams.viewDir, bsdf.getNormalMatrix(), nrc.rayparams.rayProbability, brdfMult, false, bsdf.getNormalMatrixInv());
+			if (mode==alReflectDistribution_GGX) {
+				dir=ggxDirMixed(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, 2.0f, rc.rayparams.viewDir, bsdf.getNormalMatrix(), nrc.rayparams.rayProbability, brdfMult, false, bsdf.getNormalMatrixInv());
+			} else {
+				dir=beckmannDir(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, rc.rayparams.viewDir, bsdf.getNormalMatrix(), nrc.rayparams.rayProbability, brdfMult);
+			}
 
 			// If this is below the surface, ignore
 			if (dotf(dir, rc.rayresult.gnormal)<0.0f)
@@ -263,6 +274,7 @@ protected:
 	float roughness;
 	float eta;
 	VR::Color color;
+	ALReflectDistribution mode;
 };
 
 Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
@@ -283,14 +295,14 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
 	Color reflections(0.0f, 0.0f, 0.0f);
 
 	{ // Integrate primary reflections
-		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor1, params.reflectRoughness1, eta1);
+		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor1, params.reflectRoughness1, eta1, params.reflectMode1);
 		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x6763223);
 		reflectTransp=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor1.maxComponentValue());
 	}
 
 	{ // Integrate secondary reflections
 		nrc.rayparams.currentMultResult=params.reflectColor2*viewFresnel2*reflectTransp;
-		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2*reflectTransp, params.reflectRoughness2, eta2);
+		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2*reflectTransp, params.reflectRoughness2, eta2, params.reflectMode2);
 		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x3223AC2);
 		reflectTransp*=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor2.maxComponentValue());
 	}

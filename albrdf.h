@@ -3,22 +3,34 @@
 
 namespace VUtils {
 
+enum ALSSSMode {
+	alSSSMode_diffusion,
+	alSSSMode_directional
+};
+
+enum ALReflectDistribution {
+	alReflectDistribution_beckmann,
+	alReflectDistribution_GGX,
+};
+
 struct ALBSDFParams {
 	Color diffuse;
 
 	Color reflectColor1;
 	float reflectRoughness1;
 	float reflectIOR1;
+	ALReflectDistribution reflectMode1;
 
 	Color reflectColor2;
 	float reflectRoughness2;
 	float reflectIOR2;
+	ALReflectDistribution reflectMode2;
 	
 	int subdivs;
 	Color transparency;
 	int doubleSided;
 
-	int sssMode; // 0 - diffusion; 1 - directional.
+	ALSSSMode sssMode;
 	float sssMix;
 
 	float sssWeight1;
