@@ -233,7 +233,7 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 
 	// Reflection 1
 	mtl_reflect_color1, _T("reflect1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.0f, 0.0f, 0.0f),
+		p_default, Color(1.0f, 1.0f, 1.0f),
 		p_ui, map_reflect1, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT1_COLOR, "reflect1_color_texture", 100.0f, 0.0f, 100.0f, map_reflect1),
@@ -267,7 +267,7 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 
 	// Reflection 2
 	mtl_reflect_color2, _T("reflect2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
-		p_default, Color(0.0f, 0.0f, 0.0f),
+		p_default, Color(1.0f, 1.0f, 1.0f),
 		p_ui, map_reflect2, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_REFLECT2_COLOR, "reflect2_color_texture", 100.0f, 0.0f, 100.0f, map_reflect2),
