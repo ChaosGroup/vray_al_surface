@@ -157,7 +157,7 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 		Color diffuse=params.diffuse*reflectTransp;
 		if (doDiffuse) rc.mtlresult.color+=rc.evalDiffuse()*diffuse*(1.0f-params.sssMix);
 
-		if (params.sssMix>0.0f) {
+		if (params.sssMix>1e-6f && diffuse.sum()>1e-6f) {
 			VR::Color rawSSSResult=computeRawSSS(rc, diffuse);
 			rc.mtlresult.color+=rawSSSResult*params.sssMix*diffuse;
 		}
