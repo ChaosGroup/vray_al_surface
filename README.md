@@ -24,6 +24,5 @@ Notes
 -----
 
 - Not all parameters of alSurface are ported;
-- For the moment, the specular BRDFs are fixed to GGX for both primary and secondary reflections;
-- For the moment, sub-surface scattering type is fixed to "directional";
+- For the moment, only "diffusion" and "directional" sub-surface scattering modes are supported;
 - Refractions and thin translucency are not ported yet.
