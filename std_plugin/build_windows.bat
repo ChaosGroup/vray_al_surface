@@ -22,11 +22,19 @@ set CPP_OPTIONS=/Ox /EHa /MD
 rem Libraries to link against
 set LIBS=vutils_s.lib plugman_s.lib vray.lib kernel32.lib user32.lib advapi32.lib
 
-rem Visual Studio compiler version
-set VC_LIBS=vc11
+rem The output folder
+set OUTPUT_PATH=.\bin
 
-set OUTFILE=.\bin\vray_BRDFAlSurface.dll
+rem Create the output folder if it doesn't exist
+if not exist "%OUTPUT_PATH%" (
+	echo Folder "%OUTPUT_PATH%" does not exist, creating...
+	mkdir %OUTPUT_PATH%
+)
 
+rem The output file
+set OUTFILE=%OUTPUT_PATH%\vray_BRDFAlSurface.dll
+
+rem Compile everything
 cl vray_brdfalsurface.cpp ..\common\albrdf.cpp ..\common\beckmann.cpp ..\common\sss.cpp /I "%VRAY_SDK%\include" /I "%VRAY_SDK%\samples\vray_plugins\brdfs\vray_brdfbump" %CPP_OPTIONS% /link %LIBS% /libpath:"%VRAY_LIB_PATH%" /dll /out:"%OUTFILE%"
 
 if %ERRORLEVEL% == 0 (
