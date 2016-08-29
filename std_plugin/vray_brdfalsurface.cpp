@@ -10,6 +10,8 @@ struct BRDFAlSurface_Params: VRayParameterListDesc {
 struct BRDFAlSurface: SimpleBSDF<MyBaseBSDF> {
 	BRDFAlSurface(VRayPluginDesc *pluginDesc);
 	void initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFlags flags) VRAY_OVERRIDE;
+	int isOpaque(void) VRAY_OVERRIDE;
+
 protected:
 	TextureFloatInterface *opacity;
 	TextureFloatInterface *bumpMap;
@@ -223,4 +225,21 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 
 	// Restore the normal
 	rcc.rayresult.normal=origNormal;
+}
+
+int BRDFAlSurface::isOpaque(void) {
+	int isSolid=false;
+	if (!opacity) {
+		isSolid=true;
+	} else {
+		float tmin=0.0f, tmax=1.0f;
+		opacity->getTexFloatBounds(tmin, tmax);
+		if (tmin>1.0f-1e-6f && tmax>1.0f-1e-6f)
+			isSolid=true;
+	}
+
+	int res=0;
+	if (isSolid) res|=MTL_OPAQUE_FOR_SHADOWS;
+
+	return res;
 }
