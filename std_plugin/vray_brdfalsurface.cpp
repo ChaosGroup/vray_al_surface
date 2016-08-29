@@ -104,6 +104,10 @@ BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component");
 	addParamTexture("sss2_color", defaultSSSColor2, -1, "Color of the second SSS component");
 	addParamTextureFloat("sss2_radius", defaultSSSRadius2, -1, "Radius for the second SSS component. Larger values cause light to go deeper into the surface");
+
+	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component");
+	addParamTexture("sss3_color", defaultSSSColor3, -1, "Color of the third SSS component");
+	addParamTextureFloat("sss3_radius", defaultSSSRadius3, -1, "Radius for the third SSS component. Larger values cause light to go deeper into the surface");
 }
 
 BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(pluginDesc) {
