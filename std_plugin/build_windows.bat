@@ -25,7 +25,13 @@ set LIBS=vutils_s.lib plugman_s.lib vray.lib kernel32.lib user32.lib advapi32.li
 rem Visual Studio compiler version
 set VC_LIBS=vc11
 
-cl vray_brdfalsurface.cpp ..\common\albrdf.cpp ..\common\beckmann.cpp ..\common\sss.cpp /I "%VRAY_SDK%\include" /I "%VRAY_SDK%\samples\vray_plugins\brdfs\vray_brdfbump" %CPP_OPTIONS% /link %LIBS% /libpath:"%VRAY_LIB_PATH%" /dll /out:".\bin\vray_BRDFAlSurface.dll"
+set OUTFILE=.\bin\vray_BRDFAlSurface.dll
+
+cl vray_brdfalsurface.cpp ..\common\albrdf.cpp ..\common\beckmann.cpp ..\common\sss.cpp /I "%VRAY_SDK%\include" /I "%VRAY_SDK%\samples\vray_plugins\brdfs\vray_brdfbump" %CPP_OPTIONS% /link %LIBS% /libpath:"%VRAY_LIB_PATH%" /dll /out:"%OUTFILE%"
+
+if %ERRORLEVEL% == 0 (
+	echo Result is in %OUTFILE%
+)
 
 :done
 echo Done.
