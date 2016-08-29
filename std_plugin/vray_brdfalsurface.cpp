@@ -1,5 +1,7 @@
 #include "vrayplugins.h"
 #include "..\common\albrdf.h"
+#include "vraytexutils.h"
+#include "bump_brdf_impl.h"
 
 using namespace VR;
 
@@ -14,7 +16,7 @@ struct BRDFAlSurface: SimpleBSDF<MyBaseBSDF> {
 
 protected:
 	TextureFloatInterface *opacity;
-	TextureFloatInterface *bumpMap;
+	BumpParams bumpParams;
 
 	TextureInterface *diffuse;
 	TextureFloatInterface *diffuseStrength;
@@ -32,8 +34,6 @@ protected:
 	TextureFloatInterface *sssWeight[3];
 	TextureInterface *sssColor[3];
 	TextureFloatInterface *sssRadius[3];
-
-	Vector getBumpNormal(const VRayContext &rc);
 };
 
 #define BRDFAlSurface_PluginID PluginID(LARGE_CONST(2016082656))
@@ -78,42 +78,46 @@ const float defaultSSSRadius3=0.75f;
 
 BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamTextureFloat("bump_map", -1, "Overall bump map");
-	addParamTextureFloat("opacity", defaultOpacity, -1, "Opacity map");
+	addParamTextureFloat("bump_amount", 1.0f, -1, "Bump amount");
+	addParamInt("bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
+	addParamTextureFloat("opacity", defaultOpacity, -1, "Opacity map", "minValue=(0), maxValue=(1)");
 
 	addParamTexture("diffuse", defaultDiffuse, -1, "The diffuse surface color");
-	addParamTextureFloat("diffuse_strength", defaultDiffuseStrength, -1, "The strength of the diffuse component");
+	addParamTextureFloat("diffuse_strength", defaultDiffuseStrength, -1, "The strength of the diffuse component", "minValue=(0), maxValue=(1)");
 
 	addParamTexture("reflect1", defaultReflect1, -1, "The first specular color");
-	addParamTextureFloat("reflect1_strength", defaultReflect1Strength, -1, "The strength of the first specular component");
-	addParamTextureFloat("reflect1_roughness", defaultReflect1Roughness, -1, "The roughness of the first specular component");
+	addParamTextureFloat("reflect1_strength", defaultReflect1Strength, -1, "The strength of the first specular component", "minValue=(0), maxValue=(1)");
+	addParamTextureFloat("reflect1_roughness", defaultReflect1Roughness, -1, "The roughness of the first specular component", "minValue=(0), maxValue=(1)");
 	addParamTextureFloat("reflect1_ior", defaultReflect1IOR, -1, "The IOR for the first specular component");
-	addParamInt("reflect1_distribution", 0, -1, "The BRDF distribution type for the first specular component (0 - Beckmann, 1 - GGX)");
+	addParamInt("reflect1_distribution", 0, -1, "The BRDF distribution type for the first specular component (0 - Beckmann, 1 - GGX)", "enum=(0:Beckmann;1:GGX)");
 
 	addParamTexture("reflect2", defaultReflect2, -1, "The second specular color");
-	addParamTextureFloat("reflect2_strength", defaultReflect2Strength, -1, "The strength of the second specular component");
-	addParamTextureFloat("reflect2_roughness", defaultReflect2Roughness, -1, "The roughness of the second specular component");
+	addParamTextureFloat("reflect2_strength", defaultReflect2Strength, -1, "The strength of the second specular component", "minValue=(0), maxValue=(1)");
+	addParamTextureFloat("reflect2_roughness", defaultReflect2Roughness, -1, "The roughness of the second specular component", "minValue=(0), maxValue=(1)");
 	addParamTextureFloat("reflect2_ior", defaultReflect2IOR, -1, "The IOR for the second specular component");
-	addParamInt("reflect2_distribution", 0, -1, "The BRDF distribution type for the second specular component (0 - Beckmann, 1 - GGX)");
+	addParamInt("reflect2_distribution", 0, -1, "The BRDF distribution type for the second specular component (0 - Beckmann, 1 - GGX)", "enum=(0:Beckmann;1:GGX)");
 
-	addParamTextureFloat("sss_mix", defaultSSSMix, -1, "Mix between the diffuse component and the SSS component");
-	addParamInt("sss_mode", defaultSSSMode, -1, "Sub-surface scattering mode (0 - diffusion; 1 - directional)");
+	addParamTextureFloat("sss_mix", defaultSSSMix, -1, "Mix between the diffuse component and the SSS component", "minValue=(0), maxValue=(1)");
+	addParamInt("sss_mode", defaultSSSMode, -1, "Sub-surface scattering mode (0 - diffusion; 1 - directional)", "enum=(0:Diffusion;1:Directional)");
 	addParamFloat("sss_density_scale", defaultSSSScale, -1, "Scale for the SSS effect; smaller values make light go deeper into the object");
 
-	addParamTextureFloat("sss1_weight", defaultSSSWeight1, -1, "Weight of the first SSS component");
+	addParamTextureFloat("sss1_weight", defaultSSSWeight1, -1, "Weight of the first SSS component", "minValue=(0), maxValue=(1), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss1_color", defaultSSSColor1, -1, "Color of the first SSS component");
 	addParamTextureFloat("sss1_radius", defaultSSSRadius1, -1, "Radius for the first SSS component. Larger values cause light to go deeper into the surface");
 
-	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component");
+	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component", "minValue=(0), maxValue=(1), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss2_color", defaultSSSColor2, -1, "Color of the second SSS component");
 	addParamTextureFloat("sss2_radius", defaultSSSRadius2, -1, "Radius for the second SSS component. Larger values cause light to go deeper into the surface");
 
-	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component");
+	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component", "minValue=(0), maxValue=(1), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss3_color", defaultSSSColor3, -1, "Color of the third SSS component");
 	addParamTextureFloat("sss3_radius", defaultSSSRadius3, -1, "Radius for the third SSS component. Larger values cause light to go deeper into the surface");
 }
 
 BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(pluginDesc) {
-	paramList->setParamCache("bump_map", &bumpMap);
+	paramList->setParamCache("bump_map", &bumpParams.bumpTexFloat);
+	paramList->setParamCache("bump_amount", &bumpParams.bumpMultTex);
+	paramList->setParamCache("bump_type", &bumpParams.mapType);
 	paramList->setParamCache("opacity", &opacity);
 
 	paramList->setParamCache("diffuse", &diffuse);
@@ -146,10 +150,10 @@ BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(
 	paramList->setParamCache("sss3_weight", &sssWeight[2]);
 	paramList->setParamCache("sss3_color", &sssColor[2]);
 	paramList->setParamCache("sss3_radius", &sssRadius[2]);
-}
 
-Vector BRDFAlSurface::getBumpNormal(const VRayContext &rc) {
-	return rc.rayresult.normal;
+	// We only have a bump texture, and it is multiplied by the bumpMult, so set the
+	// bumpMult to 1.0 here.
+	bumpParams.bumpMult=1.0f;
 }
 
 inline Color getTexture(const VRayContext &rc, TextureInterface *texmap, const VR::Color &defaultValue) {
@@ -176,13 +180,18 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 	VR::ALBSDFParams &params=bsdf->getParams();
 
 	// Compute the bumped normal
-	VR::Vector bumpNormal=getBumpNormal(rc);
+	VR::Vector bumpVector, bumpElevation;
+	bumpParams.getBump(rc, bumpVector, bumpElevation);
+
+	// Save the current normal and hit point so that we can restore them later, in case they
+	// are modified by bump mapping.
+	Vector origNormal=rc.rayresult.normal;
+	TracePoint origPoint=rc.rayresult.wpoint;
 
 	// Before evaluating any textures, we must set the bumped normal as some
 	// textures may depend on it.
-	VR::VRayContext &rcc=const_cast<VR::VRayContext&>(rc);
-	VR::Vector origNormal=rcc.rayresult.normal;
-	rcc.rayresult.normal=bumpNormal;
+	VRayContext &rcc=const_cast<VR::VRayContext&>(rc);
+	applyBump(rcc, bumpVector, bumpElevation, bumpParams.mapType, rcc.rayresult.realBack);
 
 	params.diffuse=getTexture(rc, diffuse, defaultDiffuse);
 	params.diffuse*=getTexture(rc, diffuseStrength, defaultDiffuseStrength);
@@ -225,6 +234,7 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 
 	// Restore the normal
 	rcc.rayresult.normal=origNormal;
+	rcc.rayresult.wpoint=origPoint;
 }
 
 int BRDFAlSurface::isOpaque(void) {
