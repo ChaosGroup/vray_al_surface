@@ -1,5 +1,5 @@
 #include "vrayplugins.h"
-#include "..\common\albrdf.h"
+#include "../common/albrdf.h"
 #include "vraytexutils.h"
 #include "bump_brdf_impl.h"
 
@@ -45,16 +45,16 @@ PLUGIN_LIBRARY("BRDFAlSurface", "V-Ray port of the alSurface shader");
 
 const float defaultOpacity=1.0f;
 
-const VR::Color defaultDiffuse(0.5f, 0.5f, 0.5f);
+#define defaultDiffuse Color(0.5f, 0.5f, 0.5f)
 const float defaultDiffuseStrength=1.0f;
 
-const Color defaultReflect1(1.0f, 1.0f, 1.0f);
+#define defaultReflect1 Color(1.0f, 1.0f, 1.0f)
 const float defaultReflect1Strength=0.0f;
 const float defaultReflect1Roughness=0.5f;
 const float defaultReflect1IOR=1.4f;
 const int defaultReflect1Distribution=0;
 
-const Color defaultReflect2(1.0f, 1.0f, 1.0f);
+#define defaultReflect2 Color(1.0f, 1.0f, 1.0f)
 const float defaultReflect2Strength=0.0f;
 const float defaultReflect2Roughness=0.5f;
 const float defaultReflect2IOR=1.4f;
@@ -65,15 +65,15 @@ const float defaultSSSScale=1.0f;
 const float defaultSSSMix=0.0f;
 
 const float defaultSSSWeight1=1.0f;
-const Color defaultSSSColor1(0.439f, 0.156f, 0.078f);
+#define defaultSSSColor1 Color(0.439f, 0.156f, 0.078f)
 const float defaultSSSRadius1=1.5f;
 
 const float defaultSSSWeight2=1.0f;
-const Color defaultSSSColor2(0.439f, 0.08f, 0.018f);
+#define defaultSSSColor2 Color(0.439f, 0.08f, 0.018f)
 const float defaultSSSRadius2=4.0f;
 
 const float defaultSSSWeight3=1.0f;
-const Color defaultSSSColor3(0.523f, 0.637f, 0.667f);
+#define defaultSSSColor3 Color(0.523f, 0.637f, 0.667f)
 const float defaultSSSRadius3=0.75f;
 
 BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
