@@ -15,10 +15,26 @@ Installation for 3ds Max
 
 Copy the .dlt file for your 3ds Max version to the [maxroot]\plugins\vrayplugins folder.
 
-Usage
------
+Usage in 3ds Max
+----------------
 
 The material is called VRayALMtl.
+
+Installation for Maya
+---------------------
+
+Windows
+-------
+
+*) Copy the file vray_BRDFAlSurface.dll to the folder with the rest of the V-Ray plugins (f.e. C;\program files\autodesk\maya2016\vray\vrayplugins)
+OR
+*) Add the path to the vray_BRDFAlSurface.dll to the environment variables VRAY_FOR_MAYA2016_PLUGINS_x64 and VRAY_PLUGINS_x64
+
+Usage in Maya
+-------------
+
+*) You can create the new material from Create > V-Ray > Create from V-Ray plugin > BRDF material
+
 
 Notes
 -----
