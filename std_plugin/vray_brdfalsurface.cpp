@@ -180,7 +180,7 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 	VR::ALBSDFParams &params=bsdf->getParams();
 
 	// Compute the bumped normal
-	VR::Vector bumpVector, bumpElevation;
+	VR::Vector bumpVector(0.0f, 0.0f, 0.0f), bumpElevation(0.0f, 0.0f, 0.0f);
 	bumpParams.getBump(rc, bumpVector, bumpElevation);
 
 	// Save the current normal and hit point so that we can restore them later, in case they
