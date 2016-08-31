@@ -43,38 +43,7 @@ PLUGIN_LIBRARY("BRDFAlSurface", "V-Ray port of the alSurface shader");
 //************************************
 // Implementation
 
-const float defaultOpacity=1.0f;
-
-#define defaultDiffuse Color(0.5f, 0.5f, 0.5f)
-const float defaultDiffuseStrength=1.0f;
-
-#define defaultReflect1 Color(1.0f, 1.0f, 1.0f)
-const float defaultReflect1Strength=0.0f;
-const float defaultReflect1Roughness=0.5f;
-const float defaultReflect1IOR=1.4f;
-const int defaultReflect1Distribution=0;
-
-#define defaultReflect2 Color(1.0f, 1.0f, 1.0f)
-const float defaultReflect2Strength=0.0f;
-const float defaultReflect2Roughness=0.5f;
-const float defaultReflect2IOR=1.4f;
-const int defaultReflect2Distribution=0;
-
-const int defaultSSSMode=0;
-const float defaultSSSScale=1.0f;
-const float defaultSSSMix=0.0f;
-
-const float defaultSSSWeight1=1.0f;
-#define defaultSSSColor1 Color(0.439f, 0.156f, 0.078f)
-const float defaultSSSRadius1=1.5f;
-
-const float defaultSSSWeight2=1.0f;
-#define defaultSSSColor2 Color(0.439f, 0.08f, 0.018f)
-const float defaultSSSRadius2=4.0f;
-
-const float defaultSSSWeight3=1.0f;
-#define defaultSSSColor3 Color(0.523f, 0.637f, 0.667f)
-const float defaultSSSRadius3=0.75f;
+#include "../common/default_values.h"
 
 BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamTextureFloat("bump_map", -1, "Overall bump map");

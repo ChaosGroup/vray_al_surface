@@ -18,7 +18,7 @@
 #include "brdfs.h"
 #include "vraygeom.h"
 #include "brdfpool.h"
-#include "albrdf.h"
+#include "../common/albrdf.h"
 
 // IMPORTANT:
 // The ClassID must be changed whenever a new project
