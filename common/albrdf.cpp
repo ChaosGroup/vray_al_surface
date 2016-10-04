@@ -10,6 +10,10 @@
 
 using namespace VUtils;
 
+inline void invertIOR(float &ior) {
+	if (ior<1.0f && ior>0.0f) ior=clamp(1.0f/ior, 1.0f, 1e4f);
+}
+
 void MyBaseBSDF::init(const VRayContext &rc) {
 	origBackside=rc.rayresult.realBack;
 
@@ -22,6 +26,10 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 		normal=-normal;
 		gnormal=-gnormal;
 	}
+
+	// If IORs are <1.0f, invert them.
+	invertIOR(params.reflectIOR1);
+	invertIOR(params.reflectIOR2);
 
 	// Dim the diffuse/reflection colors by the transparency
 	Color invTransp=params.transparency.whiteComplement();
