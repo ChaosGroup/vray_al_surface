@@ -70,15 +70,15 @@ BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamInt("sss_mode", defaultSSSMode, -1, "Sub-surface scattering mode (0 - diffusion; 1 - directional)", "enum=(0:Diffusion;1:Directional)");
 	addParamFloat("sss_density_scale", defaultSSSScale, -1, "Scale for the SSS effect; smaller values make light go deeper into the object");
 
-	addParamTextureFloat("sss1_weight", defaultSSSWeight1, -1, "Weight of the first SSS component", "minValue=(0), maxValue=(1), softMinValue=(0), softMaxValue=(1)");
+	addParamTextureFloat("sss1_weight", defaultSSSWeight1, -1, "Weight of the first SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss1_color", defaultSSSColor1, -1, "Color of the first SSS component");
 	addParamTextureFloat("sss1_radius", defaultSSSRadius1, -1, "Radius for the first SSS component. Larger values cause light to go deeper into the surface");
 
-	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component", "minValue=(0), maxValue=(1), softMinValue=(0), softMaxValue=(1)");
+	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss2_color", defaultSSSColor2, -1, "Color of the second SSS component");
 	addParamTextureFloat("sss2_radius", defaultSSSRadius2, -1, "Radius for the second SSS component. Larger values cause light to go deeper into the surface");
 
-	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component", "minValue=(0), maxValue=(1), softMinValue=(0), softMaxValue=(1)");
+	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss3_color", defaultSSSColor3, -1, "Color of the third SSS component");
 	addParamTextureFloat("sss3_radius", defaultSSSRadius3, -1, "Radius for the third SSS component. Larger values cause light to go deeper into the surface");
 }
