@@ -57,8 +57,11 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	// Check if we need to trace the reflection
 	dontTrace=p_or(
 		p_or(rc.rayparams.totalLevel>=sdata.params.options.mtl_maxDepth, 0==sdata.params.options.mtl_reflectionRefraction),
-		0!=(rc.rayparams.rayType & RT_INDIRECT) // p_and(0!=(rc.rayparams.rayType & RT_INDIRECT), !sdata.params.gi.reflectCaustics)
+		0!=(rc.rayparams.rayType & RT_INDIRECT)
 	);
+
+	computeSpecular1=(params.reflectRoughness1>1e-6f && params.reflectColor1.maxComponentValue()>1e-6f);
+	computeSpecular2=(params.reflectRoughness2>1e-6f && params.reflectColor2.maxComponentValue()>1e-6f);
 
 	if (dontTrace) {
 		params.reflectColor1.makeZero();
@@ -70,17 +73,21 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 		// Compute the normal matrices
 		if (dotf(rc.rayparams.viewDir, params.reflectNormal1)>0.0f) computeNormalMatrix(rc, gnormal, nm1);
 		else computeNormalMatrix(rc, params.reflectNormal1, nm1);
-		inm1=inverse(nm1);
+		inm1=inversef(nm1);
 
-		if (dotf(rc.rayparams.viewDir, params.reflectNormal2)>0.0f) computeNormalMatrix(rc, gnormal, nm2);
-		else computeNormalMatrix(rc, params.reflectNormal2, nm2);
-		inm2=inverse(nm2);
+		if ((params.reflectNormal1-params.reflectNormal2).lengthSqr()<1e-12f || !computeSpecular2) {
+			// If the secondary normal is the same as the primary one,
+			// or we don't have secondary specular, just reuse the primary matrices.
+			nm2=nm1;
+			inm2=inm1;
+		} else {
+			if (dotf(rc.rayparams.viewDir, params.reflectNormal2)>0.0f) computeNormalMatrix(rc, gnormal, nm2);
+			else computeNormalMatrix(rc, params.reflectNormal2, nm2);
+			inm2=inversef(nm2);
+		}
 	}
 
 	useMISForDiffuse=rc.vray->getSequenceData().globalLightManager->isGatheringPoint(rc);
-
-	computeSpecular1=(params.reflectRoughness1>1e-6f && params.reflectColor1.maxComponentValue()>1e-6f);
-	computeSpecular2=(params.reflectRoughness2>1e-6f && params.reflectColor2.maxComponentValue()>1e-6f);
 }
 
 // From BRDFSampler
