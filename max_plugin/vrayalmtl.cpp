@@ -47,7 +47,11 @@ ALMtlTexInfo texInfo[NSUBTEX]={
 
 	{ mtl_sss_color3_tex, mtl_sss_color3_tex_on, mtl_sss_color3_tex_mult, mtl_sss_color3_tex_shortmap, -1, _T("sss3_color_texture") },
 	{ mtl_sss_weight3_tex, mtl_sss_weight3_tex_on, mtl_sss_weight3_tex_mult, mtl_sss_weight3_tex_shortmap, -1, _T("sss3_weight_texture") },
-	{ mtl_sss_radius3_tex, mtl_sss_radius3_tex_on, mtl_sss_radius3_tex_mult, mtl_sss_radius3_tex_shortmap, -1, _T("sss3_radius_texture") }
+	{ mtl_sss_radius3_tex, mtl_sss_radius3_tex_on, mtl_sss_radius3_tex_mult, mtl_sss_radius3_tex_shortmap, -1, _T("sss3_radius_texture") },
+
+	{ mtl_diffuse_bump_tex, mtl_diffuse_bump_tex_on, mtl_diffuse_bump_tex_mult, -1, -1, _T("diffuse_bump_texture") },
+	{ mtl_reflect_bump1_tex, mtl_reflect_bump1_tex_on, mtl_reflect_bump1_tex_mult, -1, -1, _T("reflection1_bump_texture") },
+	{ mtl_reflect_bump2_tex, mtl_reflect_bump2_tex_on, mtl_reflect_bump2_tex_mult, -1, -1, _T("reflection2_bump_texture") }
 };
 
 /*===========================================================================*\
@@ -153,19 +157,19 @@ int ctrlID(void) { return numID++; }
 
 #include "..\common\default_values.h"
 
-#define DEFINE_SUBTEX(subtexIndex, texName, defMult, rangeMin, rangeMax) \
+#define DEFINE_SUBTEX(subtexIndex, texName, defMult, rangeMin, rangeMax, mapID) \
 	texInfo[subtexIndex].texID, _T(texName), TYPE_TEXMAP, 0, 0,\
 		p_subtexno, subtexIndex,\
-		p_ui, map_textures, TYPE_TEXMAPBUTTON, ctrlID(),\
+		p_ui, mapID, TYPE_TEXMAPBUTTON, ctrlID(),\
 	PB_END,\
 	texInfo[subtexIndex].texOnID, _T(texName) _T("_on"), TYPE_BOOL, 0, 0,\
 		p_default, TRUE,\
-		p_ui, map_textures, TYPE_SINGLECHEKBOX, ctrlID(),\
+		p_ui, mapID, TYPE_SINGLECHEKBOX, ctrlID(),\
 	PB_END,\
 	texInfo[subtexIndex].texMultID, _T(texName) _T("_multiplier"), TYPE_FLOAT, P_ANIMATABLE, 0,\
 		p_default, defMult,\
 		p_range, rangeMin, rangeMax,\
-		p_ui, map_textures, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 1.0f,\
+		p_ui, mapID, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 1.0f,\
 	PB_END
 
 #define DEFINE_SUBTEX_SHORTMAP(subtexIndex, texName, defMult, rangeMin, rangeMax, mapID) \
@@ -200,8 +204,6 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	map_textures, 0, IDS_PARAMETERS, 0, 0, NULL,
 
 	// params
-	DEFINE_SUBTEX(SUBTEXNO_BUMP, "bump_texture", 30.0f, -1000.0f, 1000.0f),
-
 	mtl_sssDensityScale, _T("sss_density_scale"), TYPE_FLOAT, P_ANIMATABLE, 0,
 		p_default, defaultSSSScale,
 		p_range, 1e-6f, 1e6f,
@@ -212,6 +214,8 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_basic, TYPE_COLORSWATCH, ctrlID(),
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_OPACITY, "opacity_texture", 100.0f, 0.0f, 100.0f, map_basic),
+	DEFINE_SUBTEX(SUBTEXNO_BUMP, "bump_texture", 30.0f, -1000.0f, 1000.0f, map_basic),
+	DEFINE_SUBTEX(SUBTEXNO_DISPLACEMENT, "displacement_texture", 100.0f, 0.0f, 100.0f, map_basic),
 
 	mtl_diffuse, _T("diffuse_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, defaultDiffuse,
@@ -232,6 +236,14 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_diffuse, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.1f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS_MIX, "sss_mix_texture", 100.0f, 0.0f, 100.0f, map_diffuse),
+
+	mtl_sssMode, _T("sss_mode"), TYPE_INT, 0, 0,
+		p_range, 0, 1,
+		p_default, defaultSSSMode,
+		p_ui, map_diffuse, TYPE_INTLISTBOX, ctrlID(), 2, ids_sss_mode_diffusion, ids_sss_mode_directional,
+	PB_END,
+
+	DEFINE_SUBTEX(SUBTEXNO_DIFFUSE_BUMP, "diffuse_bump_texture", 30.0f, -1000.0f, 1000.0f, map_diffuse),
 
 	// Reflection 1
 	mtl_reflect_color1, _T("reflect1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
@@ -267,6 +279,8 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_reflect1, TYPE_INTLISTBOX, ctrlID(), 2, ids_reflect_distribution_beckmann, ids_reflect_distribution_GGX,
 	PB_END,
 
+	DEFINE_SUBTEX(SUBTEXNO_REFLECT1_BUMP, "reflect1_bump_texture", 30.0f, -1000.0f, 1000.0f, map_reflect1),
+
 	// Reflection 2
 	mtl_reflect_color2, _T("reflect2_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, defaultReflect2,
@@ -301,13 +315,9 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_reflect2, TYPE_INTLISTBOX, ctrlID(), 2, ids_reflect_distribution_beckmann, ids_reflect_distribution_GGX,
 	PB_END,
 
-	// SSS
-	mtl_sssMode, _T("sss_mode"), TYPE_INT, 0, 0,
-		p_range, 0, 1,
-		p_default, defaultSSSMode,
-		p_ui, map_diffuse, TYPE_INTLISTBOX, ctrlID(), 2, ids_sss_mode_diffusion, ids_sss_mode_directional,
-	PB_END,
+	DEFINE_SUBTEX(SUBTEXNO_REFLECT2_BUMP, "reflect2_bump_texture", 30.0f, -1000.0f, 1000.0f, map_reflect2),
 
+	// SSS
 	mtl_sssColor1, _T("sss1_color"), TYPE_RGBA, P_ANIMATABLE, 0,
 		p_default, defaultSSSColor1,
 		p_ui, map_sss1, TYPE_COLORSWATCH, ctrlID(),
@@ -367,8 +377,6 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_RADIUS, "sss3_radius_texture", 100.0f, 0.0f, 100.0f, map_sss3),
-
-	DEFINE_SUBTEX(SUBTEXNO_DISPLACEMENT, "displacement_texture", 100.0f, 0.0f, 100.0f),
 PB_END
 );
 

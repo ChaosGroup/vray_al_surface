@@ -47,6 +47,10 @@ struct ALBSDFParams {
 
 	float sssDensityScale;
 
+	Vector diffuseNormal;
+	Vector reflectNormal1;
+	Vector reflectNormal2;
+
 	void normalizeWeights(void) {
 		float sssSum=sssWeight1+sssWeight2+sssWeight3;
 		if (sssSum>0.0f) {
@@ -86,7 +90,8 @@ protected:
 
 	Vector normal, gnormal;
 
-	Matrix nm, inm; // A matrix with the normal as the z-axis; can be used for anisotropy
+	Matrix nm1, inm1; // A matrix with the normal as the z-axis; can be used for anisotropy
+	Matrix nm2, inm2;
 
 	float viewFresnel1; // An crude estimate of the Fresnel, used in getLightMult().
 	float eta1; // Inverse of ior1
@@ -95,6 +100,9 @@ protected:
 	float eta2;
 
 	int useMISForDiffuse; // true if the eval() method should use MIS for diffuse illumination.
+
+	int computeSpecular1; // true if primary specular needs to be computed in the eval() method.
+	int computeSpecular2; // true if the secondary specular needs to be computed in the eval() method.
 
 	virtual void computeNormalMatrix(const VRayContext &rc, const Vector &normal, Matrix &nm);
 
@@ -109,11 +117,12 @@ public:
 	void init(const VRayContext &rc);
 
 	// From BRDFSampler
-	Color getDiffuseColor(Color &lightColor);
-	Color getLightMult(Color &lightColor);
-	Color getTransparency(const VRayContext &rc);
+	Color getDiffuseColor(Color &lightColor) VRAY_OVERRIDE;
+	Color getLightMult(Color &lightColor) VRAY_OVERRIDE;
+	Color getTransparency(const VRayContext &rc) VRAY_OVERRIDE;
+	Vector getDiffuseNormal(const VRayContext &rc) VRAY_OVERRIDE;
 
-	Color eval(const VRayContext &rc, const Vector &direction, Color &lightColor, Color &origLightColor, float probLight, int flags);
+	Color eval(const VRayContext &rc, const Vector &direction, Color &lightColor, Color &origLightColor, float probLight, int flags) VRAY_OVERRIDE;
 	void traceForward(VRayContext &rc, int doDiffuse);
 
 	RenderChannelsInfo* getRenderChannels(void);
@@ -122,11 +131,7 @@ public:
 	BRDFSampler *getBRDF(BSDFSide side);
 
 	// Other methods
-	const Vector& getNormal(void) const { return normal; }
 	const Vector& getGNormal(void) const { return gnormal; }
-	const Matrix& getNormalMatrix(void) const { return nm; }
-	const Matrix& getNormalMatrixInv(void) const { return inm; }
-	float getEta1(void) const { return eta1; }
 };
 
 } // namespace VUtils

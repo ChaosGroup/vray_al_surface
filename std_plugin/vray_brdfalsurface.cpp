@@ -162,6 +162,9 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 	VRayContext &rcc=const_cast<VR::VRayContext&>(rc);
 	applyBump(rcc, bumpVector, bumpElevation, bumpParams.mapType, rcc.rayresult.realBack);
 
+	// For the moment just use the same bump normal for all layers.
+	params.diffuseNormal=params.reflectNormal1=params.reflectNormal2=rc.rayresult.normal;
+
 	params.diffuse=getTexture(rc, diffuse, defaultDiffuse);
 	params.diffuse*=getTexture(rc, diffuseStrength, defaultDiffuseStrength);
 

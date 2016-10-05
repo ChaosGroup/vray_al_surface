@@ -103,6 +103,10 @@ enum {
 	mtl_sssMode,
 	mtl_reflect_distribution1,
 	mtl_reflect_distribution2,
+
+	mtl_diffuse_bump_tex, mtl_diffuse_bump_tex_on, mtl_diffuse_bump_tex_mult,
+	mtl_reflect_bump1_tex, mtl_reflect_bump1_tex_on, mtl_reflect_bump1_tex_mult,
+	mtl_reflect_bump2_tex, mtl_reflect_bump2_tex_on, mtl_reflect_bump2_tex_mult,
 };
 
 enum {
@@ -133,6 +137,10 @@ enum {
 	SUBTEXNO_SSS3_COLOR,
 	SUBTEXNO_SSS3_WEIGHT,
 	SUBTEXNO_SSS3_RADIUS,
+
+	SUBTEXNO_DIFFUSE_BUMP,
+	SUBTEXNO_REFLECT1_BUMP,
+	SUBTEXNO_REFLECT2_BUMP,
 
 	NSUBTEX
 };
@@ -179,7 +187,7 @@ class SkeletonMaterial : public Mtl, public VR::VRenderMtl, public DADMgr, publi
 	float combineTex(const VR::VRayContext &rc, float origValue, int texIndex) const;
 
 	// Return a bumped normal, taking into account the bump map.
-	VR::Vector getBumpNormal(const VR::VRayContext &rc);
+	VR::Vector getBumpNormal(const VR::VRayContext &rc, int texIndex, const VR::Vector &baseNormal) const;
 
 	// The version of the material; used when loading older versions to convert some parameters.
 	int version;

@@ -90,17 +90,18 @@ float SkeletonMaterial::combineTex(const VR::VRayContext &rc, float origValue, i
 	return res;
 }
 
-VR::Vector SkeletonMaterial::getBumpNormal(const VR::VRayContext &rc) {
-	if (!subtex[SUBTEXNO_BUMP] || fabsf(subtexMult[SUBTEXNO_BUMP])<1e-6f) return rc.rayresult.normal;
+VR::Vector SkeletonMaterial::getBumpNormal(const VR::VRayContext &rc, int texIndex, const VR::Vector &baseNormal) const {
+	if (!subtex[texIndex] || fabsf(subtexMult[texIndex])<1e-6f)
+		return rc.rayresult.normal;
 
 	VR::VRayContext &rcc=const_cast<VR::VRayContext&>(rc);
 	VR::VRayInterface &vri=static_cast<VR::VRayInterface&>(rcc);
-	Point3 bump=subtex[SUBTEXNO_BUMP]->EvalNormalPerturb(vri);
+	Point3 bump=subtex[texIndex]->EvalNormalPerturb(vri);
 
 	// The bump normal is in internal space, convert to camera space
 	bump=vri.VectorTo(bump, REF_WORLD);
 
-	VR::Vector nrm=rc.rayresult.normal+toVector(bump)*subtexMult[SUBTEXNO_BUMP];
+	VR::Vector nrm=baseNormal+toVector(bump)*subtexMult[texIndex];
 	return VR::normalize(nrm);
 }
 
@@ -111,7 +112,7 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	VR::ALBSDFParams &params=bsdf->getParams();
 
 	// Compute the bumped normal
-	VR::Vector bumpNormal=getBumpNormal(rc);
+	VR::Vector bumpNormal=getBumpNormal(rc, SUBTEXNO_BUMP, rc.rayresult.normal);
 
 	// Before evaluating any textures, we must set the bumped normal as some
 	// textures may depend on it.
@@ -121,18 +122,21 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 
 	params.diffuse=combineTex(rc, toColor(diffuse), SUBTEXNO_DIFFUSE);
 	params.diffuse*=combineTex(rc, diffuseStrength, SUBTEXNO_DIFFUSE_STRENGTH);
+	params.diffuseNormal=getBumpNormal(rc, SUBTEXNO_DIFFUSE_BUMP, bumpNormal);
 
 	params.reflectColor1=combineTex(rc, toColor(reflectColor1), SUBTEXNO_REFLECT1_COLOR);
 	params.reflectColor1*=combineTex(rc, reflectStrength1, SUBTEXNO_REFLECT1_STRENGTH);
 	params.reflectRoughness1=combineTex(rc, reflectRoughness1, SUBTEXNO_REFLECT1_ROUGHNESS);
 	params.reflectIOR1=combineTex(rc, reflectIOR1, SUBTEXNO_REFLECT1_IOR);
 	params.reflectMode1=(reflectDistribution1==0? VR::alReflectDistribution_beckmann : VR::alReflectDistribution_GGX);
+	params.reflectNormal1=getBumpNormal(rc, SUBTEXNO_REFLECT1_BUMP, bumpNormal);
 
 	params.reflectColor2=combineTex(rc, toColor(reflectColor2), SUBTEXNO_REFLECT2_COLOR);
 	params.reflectColor2*=combineTex(rc, reflectStrength2, SUBTEXNO_REFLECT2_STRENGTH);
 	params.reflectRoughness2=combineTex(rc, reflectRoughness2, SUBTEXNO_REFLECT2_ROUGHNESS);
 	params.reflectIOR2=combineTex(rc, reflectIOR2, SUBTEXNO_REFLECT2_IOR);
 	params.reflectMode2=(reflectDistribution2==0? VR::alReflectDistribution_beckmann : VR::alReflectDistribution_GGX);
+	params.reflectNormal2=getBumpNormal(rc, SUBTEXNO_REFLECT2_BUMP, bumpNormal);
 
 	params.transparency=combineTex(rc, toColor(opacity), SUBTEXNO_OPACITY).whiteComplement();
 	params.subdivs=8;
