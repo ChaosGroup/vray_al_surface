@@ -14,6 +14,7 @@ struct BRDFAlSurface: SimpleBSDF<MyBaseBSDF> {
 	void initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFlags flags) VRAY_OVERRIDE;
 	int isOpaque(void) VRAY_OVERRIDE;
 
+	void frameBegin(VRayRenderer *vray) VRAY_OVERRIDE;
 protected:
 	TextureFloatInterface *opacity;
 	BumpParams bumpParams;
@@ -48,14 +49,14 @@ PLUGIN_LIBRARY("BRDFAlSurface", "V-Ray port of the alSurface shader");
 #include "../common/default_values.h"
 
 BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
-	addParamTextureFloat("bump_map", -1, "Overall bump map (applied to all components)");
+	addParamTexture("bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Overall bump map (applied to all components)");
 	addParamTextureFloat("bump_amount", 1.0f, -1, "Bump amount");
 	addParamInt("bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
 	addParamTextureFloat("opacity", defaultOpacity, -1, "Opacity map", "minValue=(0), maxValue=(1)");
 
 	addParamTexture("diffuse", defaultDiffuse, -1, "The diffuse surface color");
 	addParamTextureFloat("diffuse_strength", defaultDiffuseStrength, -1, "The strength of the diffuse component", "minValue=(0), maxValue=(1)");
-	addParamTextureFloat("diffuse_bump_map", -1, "Additoinal diffuse bump map");
+	addParamTexture("diffuse_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additoinal diffuse bump map");
 	addParamTextureFloat("diffuse_bump_amount", 1.0f, -1, "Diffuse bump amount");
 	addParamInt("diffuse_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
 
@@ -64,7 +65,7 @@ BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamTextureFloat("reflect1_roughness", defaultReflect1Roughness, -1, "The roughness of the first specular component", "minValue=(0), maxValue=(1)");
 	addParamTextureFloat("reflect1_ior", defaultReflect1IOR, -1, "The IOR for the first specular component");
 	addParamInt("reflect1_distribution", 0, -1, "The BRDF distribution type for the first specular component (0 - Beckmann, 1 - GGX)", "enum=(0:Beckmann;1:GGX)");
-	addParamTextureFloat("reflect1_bump_map", -1, "Additional bump map for the first specular component");
+	addParamTexture("reflect1_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additional bump map for the first specular component");
 	addParamTextureFloat("reflect1_bump_amount", 1.0f, -1, "Additional bump amount for the first speculer component");
 	addParamInt("reflect1_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
 
@@ -73,7 +74,7 @@ BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamTextureFloat("reflect2_roughness", defaultReflect2Roughness, -1, "The roughness of the second specular component", "minValue=(0), maxValue=(1)");
 	addParamTextureFloat("reflect2_ior", defaultReflect2IOR, -1, "The IOR for the second specular component");
 	addParamInt("reflect2_distribution", 0, -1, "The BRDF distribution type for the second specular component (0 - Beckmann, 1 - GGX)", "enum=(0:Beckmann;1:GGX)");
-	addParamTextureFloat("reflect2_bump_map", -1, "Additional bump map for the second specular component");
+	addParamTexture("reflect2_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additional bump map for the second specular component");
 	addParamTextureFloat("reflect2_bump_amount", 1.0f, -1, "Additional bump amount for the second speculer component");
 	addParamInt("reflect2_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
 
@@ -95,14 +96,14 @@ BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 }
 
 BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(pluginDesc) {
-	paramList->setParamCache("bump_map", &bumpParams.bumpTexFloat);
+	paramList->setParamCache("bump_map", &bumpParams.bumpTexColor);
 	paramList->setParamCache("bump_amount", &bumpParams.bumpMultTex);
 	paramList->setParamCache("bump_type", &bumpParams.mapType);
 	paramList->setParamCache("opacity", &opacity);
 
 	paramList->setParamCache("diffuse", &diffuse);
 	paramList->setParamCache("diffuse_strength", &diffuseStrength);
-	paramList->setParamCache("diffuse_bump_map", &diffuseBumpParams.bumpTexFloat);
+	paramList->setParamCache("diffuse_bump_map", &diffuseBumpParams.bumpTexColor);
 	paramList->setParamCache("diffuse_bump_amount", &diffuseBumpParams.bumpMultTex);
 	paramList->setParamCache("diffuse_bump_type", &diffuseBumpParams.mapType);
 
@@ -111,7 +112,7 @@ BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(
 	paramList->setParamCache("reflect1_roughness", &reflectRoughness[0]);
 	paramList->setParamCache("reflect1_ior", &reflectIOR[0]);
 	paramList->setParamCache("reflect1_distribution", &reflectDistribution[0]);
-	paramList->setParamCache("reflect1_bump_map", &reflectBumpParams[0].bumpTexFloat);
+	paramList->setParamCache("reflect1_bump_map", &reflectBumpParams[0].bumpTexColor);
 	paramList->setParamCache("reflect1_bump_amount", &reflectBumpParams[0].bumpMultTex);
 	paramList->setParamCache("reflect1_bump_type", &reflectBumpParams[0].mapType);
 
@@ -120,7 +121,7 @@ BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(
 	paramList->setParamCache("reflect2_roughness", &reflectRoughness[1]);
 	paramList->setParamCache("reflect2_ior", &reflectIOR[1]);
 	paramList->setParamCache("reflect2_distribution", &reflectDistribution[1]);
-	paramList->setParamCache("reflect2_bump_map", &reflectBumpParams[1].bumpTexFloat);
+	paramList->setParamCache("reflect2_bump_map", &reflectBumpParams[1].bumpTexColor);
 	paramList->setParamCache("reflect2_bump_amount", &reflectBumpParams[1].bumpMultTex);
 	paramList->setParamCache("reflect2_bump_type", &reflectBumpParams[1].mapType);
 
@@ -146,6 +147,30 @@ BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(
 	diffuseBumpParams.bumpMult=1.0f;
 	reflectBumpParams[0].bumpMult=1.0f;
 	reflectBumpParams[1].bumpMult=1.0f;
+}
+
+// Check if the color texture in the given bump params is a constant color
+// and if yes - remove it. This is in order to prevent odd renders if the user
+// accidentally sets some color and leaves the type to some kind of normal map.
+void checkBumpTex(BumpParams &bumpParams) {
+	if (bumpParams.bumpTexColor) {
+		AColor tmin(0.0f, 0.0f, 0.0f, 0.0f);
+		AColor tmax(1.0f, 1.0f, 1.0f, 1.0f);
+		bumpParams.bumpTexColor->getTexColorBounds(tmin, tmax);
+		if ((tmax-tmin).lengthSqr()<1e-12f) {
+			bumpParams.bumpTexColor=NULL;
+		}
+	}
+}
+
+void BRDFAlSurface::frameBegin(VRayRenderer *vray) {
+	SimpleBSDF<MyBaseBSDF>::frameBegin(vray);
+
+	// Clear any constant bump maps.
+	checkBumpTex(bumpParams);
+	checkBumpTex(diffuseBumpParams);
+	checkBumpTex(reflectBumpParams[0]);
+	checkBumpTex(reflectBumpParams[1]);
 }
 
 inline Color getTexture(const VRayContext &rc, TextureInterface *texmap, const VR::Color &defaultValue) {
@@ -193,7 +218,7 @@ inline Vector applyBumpToNormal(const Vector &normal, const Vector &bumpVector, 
 
 inline Vector getBumpNormal(const BumpParams &bumpParams, const VRayContext &rc) {
 	Vector res;
-	if (!bumpParams.bumpTexFloat) {
+	if (!bumpParams.bumpTexColor) {
 		res=rc.rayresult.normal;
 	} else {
 		VR::Vector bumpVector(0.0f, 0.0f, 0.0f), bumpElevation(0.0f, 0.0f, 0.0f);
