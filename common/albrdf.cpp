@@ -71,8 +71,7 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 		params.reflectRoughness2=VR::sqr(clamp(params.reflectRoughness2, 0.0f, 0.995f));
 
 		// Compute the normal matrices
-		if (dotf(rc.rayparams.viewDir, params.reflectNormal1)>0.0f) computeNormalMatrix(rc, gnormal, nm1);
-		else computeNormalMatrix(rc, params.reflectNormal1, nm1);
+		computeNormalMatrix(rc, params.reflectNormal1, nm1);
 		inm1=inversef(nm1);
 
 		if ((params.reflectNormal1-params.reflectNormal2).lengthSqr()<1e-12f || !computeSpecular2) {
@@ -81,8 +80,7 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 			nm2=nm1;
 			inm2=inm1;
 		} else {
-			if (dotf(rc.rayparams.viewDir, params.reflectNormal2)>0.0f) computeNormalMatrix(rc, gnormal, nm2);
-			else computeNormalMatrix(rc, params.reflectNormal2, nm2);
+			computeNormalMatrix(rc, params.reflectNormal2, nm2);
 			inm2=inversef(nm2);
 		}
 	}
