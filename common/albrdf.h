@@ -103,6 +103,7 @@ struct RenderElementsResults {
 	Color gi, rawGI;
 
 	Color finalColor;
+	Color finalShadow;
 
 	RenderElementsResults(void) {}
 
@@ -148,10 +149,13 @@ protected:
 	Color finalSpecularLighting, currentSpecularLighting;
 	Color finalDiffuseLighting, currentDiffuseLighting;
 	Color finalColor, currentColor;
+	Color finalLight, currentLight;
+	Color finalShadow, currentShadow;
 
 	void clearRenderElements(void);
 	void clearCurrentRenderElements(void);
 	void addCurrentRenderElements(void);
+	void multCurrentRenderElements(float mult);
 public:
 	// Return the params so that they can be set.
 	ALBSDFParams& getParams(void) { return params; }

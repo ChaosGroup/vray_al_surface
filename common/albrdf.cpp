@@ -96,12 +96,14 @@ void MyBaseBSDF::clearCurrentRenderElements(void) {
 	currentDiffuseLighting.makeZero();
 	currentSpecularLighting.makeZero();
 	currentColor.makeZero();
+	currentShadow.makeZero();
 }
 
 void MyBaseBSDF::clearRenderElements(void) {
 	finalSpecularLighting.makeZero();
 	finalDiffuseLighting.makeZero();
 	finalColor.makeZero();
+	finalShadow.makeZero();
 
 	clearCurrentRenderElements();
 }
@@ -110,6 +112,14 @@ void MyBaseBSDF::addCurrentRenderElements(void) {
 	finalDiffuseLighting+=currentDiffuseLighting;
 	finalSpecularLighting+=currentSpecularLighting;
 	finalColor+=currentColor;
+	finalShadow+=currentShadow;
+}
+
+void MyBaseBSDF::multCurrentRenderElements(float mult) {
+	currentDiffuseLighting*=mult;
+	currentSpecularLighting*=mult;
+	currentColor*=mult;
+	currentShadow*=mult;
 }
 
 // From BRDFSampler
@@ -198,12 +208,14 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 		float probReflection=2.0f*cs;
 
 		float k=useMISForDiffuse? getReflectionWeight(probLight, probReflection) : 1.0f;
-		Color rawDiffuseLighting=(0.5f*probReflection*k)*(1.0f-params.sssMix)*lightColor;
+		k*=(0.5f*probReflection)*(1.0f-params.sssMix);
+		Color rawDiffuseLighting=k*lightColor;
 		Color diffuseLighting=rawDiffuseLighting*params.diffuse;
 		res+=diffuseLighting;
 
 		if (computeRenderElements) {
 			currentDiffuseLighting+=diffuseLighting;
+			currentShadow+=(origLightColor-lightColor)*(k*params.diffuse);
 		}
 	}
 
@@ -219,9 +231,7 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 
 void MyBaseBSDF::multiplyLight(float mult) {
 	if (computeRenderElements) {
-		currentDiffuseLighting*=mult;
-		currentSpecularLighting*=mult;
-		currentColor*=mult;
+		multCurrentRenderElements(mult);
 	}
 }
 
@@ -241,6 +251,7 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 	if (computeRenderElements) {
 		renderElements.diffuseLighting=finalDiffuseLighting;
 		renderElements.specularLighting=finalSpecularLighting;
+		renderElements.finalShadow=finalShadow;
 	}
 
 	float reflectTransp=1.0f;
@@ -512,6 +523,20 @@ void MyBaseBSDF::writeRenderElements(Fragment *f, const RenderElementsResults &r
 	
 	f->setChannelDataByAlias(REG_CHAN_VFB_SPECULAR, &renderElements.specularLighting);
 	f->setChannelDataByAlias(REG_CHAN_VFB_SSS2, &renderElements.sss);
+
+	// Because of the glossy Fresnel, it is difficult to predict what the raw lighting should
+	// look like, so we just derive it from the diffuse filter and the raw lighting.
+	Color rawShadow=divideColor(renderElements.finalShadow, renderElements.diffuseFilter);
+	f->setChannelDataByAlias(REG_CHAN_VFB_RAWSHADOW, &rawShadow);
+				
+	VR::Color *matteChan=(VR::Color*) f->getChannelDataPtrByAlias(REG_CHAN_VFB_MATTESHADOW);
+	if (matteChan) {
+		VR::Color total=renderElements.diffuseLighting+renderElements.finalShadow;
+		VR::Color shadowMatte=divideColor(renderElements.finalShadow, total);
+		f->setChannelDataByAlias(REG_CHAN_VFB_MATTESHADOW, &shadowMatte);
+	}
+
+	f->setChannelDataByAlias(REG_CHAN_VFB_SHADOW, &renderElements.finalShadow);
 
 	if (params.renderChannels) {
 		for (int i=0; i<params.renderChannels->count(); i++) {
