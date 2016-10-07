@@ -112,6 +112,32 @@ struct RenderElementsResults {
 	}
 };
 
+// Render elements accumulated in MyBaseBSDF::eval() during direct lighting evaluations.
+struct DirectRenderElements {
+	Color specularLighting; // Specular contributions from the two reflective layers.
+	Color diffuseLighting; // Diffuse contributions from the diffuse layer only.
+	Color color; // The final contribution due to direct illumination.
+	Color shadow; // Shadow contributions for the diffuse layer only.
+
+	void makeZero(void) {
+		memset(this, 0, sizeof(*this));
+	}
+
+	void multiply(float mult) {
+		specularLighting*=mult;
+		diffuseLighting*=mult;
+		color*=mult;
+		shadow*=mult;
+	}
+
+	void add(const DirectRenderElements &other) {
+		specularLighting+=other.specularLighting;
+		diffuseLighting+=other.diffuseLighting;
+		color+=other.color;
+		shadow+=other.shadow;
+	}
+};
+
 class MyBaseBSDF: public BRDFSampler, public BSDFSampler {
 protected:
 	ALBSDFParams params;
@@ -146,16 +172,7 @@ protected:
 	void writeRenderElements(Fragment *f, const RenderElementsResults &renderElements);
 
 	int computeRenderElements;
-	Color finalSpecularLighting, currentSpecularLighting;
-	Color finalDiffuseLighting, currentDiffuseLighting;
-	Color finalColor, currentColor;
-	Color finalLight, currentLight;
-	Color finalShadow, currentShadow;
-
-	void clearRenderElements(void);
-	void clearCurrentRenderElements(void);
-	void addCurrentRenderElements(void);
-	void multCurrentRenderElements(float mult);
+	DirectRenderElements finalElements, currentElements;
 public:
 	// Return the params so that they can be set.
 	ALBSDFParams& getParams(void) { return params; }

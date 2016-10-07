@@ -89,37 +89,10 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	useMISForDiffuse=rc.vray->getSequenceData().globalLightManager->isGatheringPoint(rc);
 
 	computeRenderElements=(rc.mtlresult.fragment!=NULL);
-	clearRenderElements();
-}
-
-void MyBaseBSDF::clearCurrentRenderElements(void) {
-	currentDiffuseLighting.makeZero();
-	currentSpecularLighting.makeZero();
-	currentColor.makeZero();
-	currentShadow.makeZero();
-}
-
-void MyBaseBSDF::clearRenderElements(void) {
-	finalSpecularLighting.makeZero();
-	finalDiffuseLighting.makeZero();
-	finalColor.makeZero();
-	finalShadow.makeZero();
-
-	clearCurrentRenderElements();
-}
-
-void MyBaseBSDF::addCurrentRenderElements(void) {
-	finalDiffuseLighting+=currentDiffuseLighting;
-	finalSpecularLighting+=currentSpecularLighting;
-	finalColor+=currentColor;
-	finalShadow+=currentShadow;
-}
-
-void MyBaseBSDF::multCurrentRenderElements(float mult) {
-	currentDiffuseLighting*=mult;
-	currentSpecularLighting*=mult;
-	currentColor*=mult;
-	currentShadow*=mult;
+	if (computeRenderElements) {
+		finalElements.makeZero();
+		currentElements.makeZero();
+	}
 }
 
 // From BRDFSampler
@@ -172,7 +145,7 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 			}
 
 			if (computeRenderElements) {
-				currentSpecularLighting+=specularLighting;
+				currentElements.specularLighting+=specularLighting;
 			}
 		}
 
@@ -196,7 +169,7 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 			}
 
 			if (computeRenderElements) {
-				currentSpecularLighting+=specularLighting;
+				currentElements.specularLighting+=specularLighting;
 			}
 		}
 	}
@@ -214,8 +187,8 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 		res+=diffuseLighting;
 
 		if (computeRenderElements) {
-			currentDiffuseLighting+=diffuseLighting;
-			currentShadow+=(origLightColor-lightColor)*(k*params.diffuse);
+			currentElements.diffuseLighting+=diffuseLighting;
+			currentElements.shadow+=(origLightColor-lightColor)*(k*params.diffuse);
 		}
 	}
 
@@ -223,7 +196,7 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 	origLightColor*=params.transparency;
 
 	if (computeRenderElements) {
-		currentColor+=res;
+		currentElements.color+=res;
 	}
 
 	return res;
@@ -231,14 +204,14 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 
 void MyBaseBSDF::multiplyLight(float mult) {
 	if (computeRenderElements) {
-		multCurrentRenderElements(mult);
+		currentElements.multiply(mult);
 	}
 }
 
 void MyBaseBSDF::lightFinished(int last) {
 	if (computeRenderElements) {
-		addCurrentRenderElements();
-		clearCurrentRenderElements();
+		finalElements.add(currentElements);
+		currentElements.makeZero();
 	}
 }
 
@@ -249,9 +222,9 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 	renderElements.makeZero();
 
 	if (computeRenderElements) {
-		renderElements.diffuseLighting=finalDiffuseLighting;
-		renderElements.specularLighting=finalSpecularLighting;
-		renderElements.finalShadow=finalShadow;
+		renderElements.diffuseLighting=finalElements.diffuseLighting;
+		renderElements.specularLighting=finalElements.specularLighting;
+		renderElements.finalShadow=finalElements.shadow;
 	}
 
 	float reflectTransp=1.0f;
@@ -283,7 +256,7 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 
 	Fragment *f=(Fragment*) rc.mtlresult.fragment;
 	if (f) {
-		renderElements.finalColor=finalColor+rc.mtlresult.color;
+		renderElements.finalColor=finalElements.color+rc.mtlresult.color;
 		writeRenderElements(f, renderElements);
 	}
 }
