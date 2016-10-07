@@ -1,6 +1,8 @@
 #ifndef __BLINN_BRDF_SAMPLER__
 #define __BLINN_BRDF_SAMPLER__
 
+#include "brdfs.h"
+
 namespace VUtils {
 
 enum ALSSSMode {
@@ -51,6 +53,8 @@ struct ALBSDFParams {
 	Vector reflectNormal1;
 	Vector reflectNormal2;
 
+	LayeredBSDFRenderChannels *renderChannels; // A list of material select render elements.
+
 	void normalizeWeights(void) {
 		float sssSum=sssWeight1+sssWeight2+sssWeight3;
 		if (sssSum>0.0f) {
@@ -78,6 +82,34 @@ inline float computeDielectricFresnel(const Vector &viewDir, const Vector &light
 	float csh=VR::Max(0.0f, -dotf(h, viewDir));
 	return fresnel(csh, ior);
 }
+
+// A temporary structure to hold all the render elements that we want to write and passed to
+// MyBaseBSDF::writeElements().
+struct RenderElementsResults {
+	Color reflection;
+	Color rawReflection;
+	Color specularLighting;
+	Color reflectionFilter;
+
+	Color diffuseFilter;
+	Color diffuse;
+	Color rawDiffuse;
+	Color diffuseLighting;
+	Color rawDiffuseLighting;
+
+	Color sss;
+	Color rawSSS;
+
+	Color gi, rawGI;
+
+	Color finalColor;
+
+	RenderElementsResults(void) {}
+
+	void makeZero(void) {
+		memset(this, 0, sizeof(*this));
+	}
+};
 
 class MyBaseBSDF: public BRDFSampler, public BSDFSampler {
 protected:
@@ -108,7 +140,18 @@ protected:
 
 	Color computeRawSSS(VRayContext &rc, const Color &diffuse);
 
-	Color computeReflections(VRayContext &rc, float &reflectTransp);
+	Color computeReflections(VRayContext &rc, float &reflectTransp, Color &reflectionFilter);
+
+	void writeRenderElements(Fragment *f, const RenderElementsResults &renderElements);
+
+	int computeRenderElements;
+	Color finalSpecularLighting, currentSpecularLighting;
+	Color finalDiffuseLighting, currentDiffuseLighting;
+	Color finalColor, currentColor;
+
+	void clearRenderElements(void);
+	void clearCurrentRenderElements(void);
+	void addCurrentRenderElements(void);
 public:
 	// Return the params so that they can be set.
 	ALBSDFParams& getParams(void) { return params; }
@@ -121,9 +164,12 @@ public:
 	Color getLightMult(Color &lightColor) VRAY_OVERRIDE;
 	Color getTransparency(const VRayContext &rc) VRAY_OVERRIDE;
 	Vector getDiffuseNormal(const VRayContext &rc) VRAY_OVERRIDE;
+	int getUseIrradianceMap(void) VRAY_OVERRIDE;
 
 	Color eval(const VRayContext &rc, const Vector &direction, Color &lightColor, Color &origLightColor, float probLight, int flags) VRAY_OVERRIDE;
-	void traceForward(VRayContext &rc, int doDiffuse);
+	void multiplyLight(float mult) VRAY_OVERRIDE;
+	void lightFinished(int last) VRAY_OVERRIDE;
+	void traceForward(VRayContext &rc, int doDiffuse) VRAY_OVERRIDE;
 
 	RenderChannelsInfo* getRenderChannels(void);
 

@@ -159,6 +159,7 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 
 	params.sssDensityScale=sssDensityScale;
 
+	params.renderChannels=&renderChannels;
 	params.normalizeWeights();
 
 	bsdf->init(rc);

@@ -283,6 +283,7 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 	params.sssColor3=getTexture(rc, sssColor[2], defaultSSSColor3);
 	params.sssRadius3=getTexture(rc, sssRadius[2], defaultSSSRadius3, false  /* clamp */);
 
+	params.renderChannels=NULL;
 	params.normalizeWeights();
 
 	bsdf->init(rc);

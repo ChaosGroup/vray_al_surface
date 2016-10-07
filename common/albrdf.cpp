@@ -2,10 +2,11 @@
 #include "vrayinterface.h"
 #include "vraycore.h"
 #include "vrayrenderer.h"
+#include "vraydmcsampler.h"
+#include "brdfs.h"
 
 #include "albrdf.h"
 #include "sss.h"
-#include "vraydmcsampler.h"
 #include "beckmann.h"
 
 using namespace VUtils;
@@ -86,6 +87,29 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	}
 
 	useMISForDiffuse=rc.vray->getSequenceData().globalLightManager->isGatheringPoint(rc);
+
+	computeRenderElements=(rc.mtlresult.fragment!=NULL);
+	clearRenderElements();
+}
+
+void MyBaseBSDF::clearCurrentRenderElements(void) {
+	currentDiffuseLighting.makeZero();
+	currentSpecularLighting.makeZero();
+	currentColor.makeZero();
+}
+
+void MyBaseBSDF::clearRenderElements(void) {
+	finalSpecularLighting.makeZero();
+	finalDiffuseLighting.makeZero();
+	finalColor.makeZero();
+
+	clearCurrentRenderElements();
+}
+
+void MyBaseBSDF::addCurrentRenderElements(void) {
+	finalDiffuseLighting+=currentDiffuseLighting;
+	finalSpecularLighting+=currentSpecularLighting;
+	finalColor+=currentColor;
 }
 
 // From BRDFSampler
@@ -126,12 +150,19 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 
 			float k=getReflectionWeight(probLight, probReflection);
 			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, params.reflectNormal1, eta1);
-			res+=(0.5f*k*brdfValue*fresnel)*(params.reflectColor1*lightColor);
+			Color rawSpecularLighting=(0.5f*k*brdfValue)*lightColor;
+			Color specularFilter=(params.reflectColor1*fresnel);
+			Color specularLighting=(rawSpecularLighting*specularFilter);
+			res+=specularLighting;
 
 			if (fresnel>0.0f) {
 				float kti=clamp(1.0f-fresnel*params.reflectColor1.maxComponentValue(), 0.0f, 1.0f);
 				lightColor*=kti;
 				origLightColor*=kti;
+			}
+
+			if (computeRenderElements) {
+				currentSpecularLighting+=specularLighting;
 			}
 		}
 
@@ -143,12 +174,19 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 
 			float k=getReflectionWeight(probLight, probReflection);
 			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, params.reflectNormal2, eta2);
-			res+=(0.5f*k*brdfValue*fresnel)*(params.reflectColor2*lightColor);
+			Color rawSpecularLighting=(0.5f*k*brdfValue)*lightColor;
+			Color specularFilter=(params.reflectColor2*fresnel);
+			Color specularLighting=(rawSpecularLighting*specularFilter);
+			res+=specularLighting;
 
 			if (fresnel>0.0f) {
 				float kti=clamp(1.0f-fresnel*params.reflectColor2.maxComponentValue(), 0.0f, 1.0f);
 				lightColor*=kti;
 				origLightColor*=kti;
+			}
+
+			if (computeRenderElements) {
+				currentSpecularLighting+=specularLighting;
 			}
 		}
 	}
@@ -160,38 +198,83 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 		float probReflection=2.0f*cs;
 
 		float k=useMISForDiffuse? getReflectionWeight(probLight, probReflection) : 1.0f;
-		res+=(0.5f*probReflection*k)*(1.0f-params.sssMix)*(params.diffuse*lightColor);
+		Color rawDiffuseLighting=(0.5f*probReflection*k)*(1.0f-params.sssMix)*lightColor;
+		Color diffuseLighting=rawDiffuseLighting*params.diffuse;
+		res+=diffuseLighting;
+
+		if (computeRenderElements) {
+			currentDiffuseLighting+=diffuseLighting;
+		}
 	}
 
 	lightColor*=params.transparency;
 	origLightColor*=params.transparency;
 
+	if (computeRenderElements) {
+		currentColor+=res;
+	}
+
 	return res;
+}
+
+void MyBaseBSDF::multiplyLight(float mult) {
+	if (computeRenderElements) {
+		currentDiffuseLighting*=mult;
+		currentSpecularLighting*=mult;
+		currentColor*=mult;
+	}
+}
+
+void MyBaseBSDF::lightFinished(int last) {
+	if (computeRenderElements) {
+		addCurrentRenderElements();
+		clearCurrentRenderElements();
+	}
 }
 
 void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 	rc.mtlresult.clear();
 
+	RenderElementsResults renderElements;
+	renderElements.makeZero();
+
+	if (computeRenderElements) {
+		renderElements.diffuseLighting=finalDiffuseLighting;
+		renderElements.specularLighting=finalSpecularLighting;
+	}
+
 	float reflectTransp=1.0f;
 	int reflectOpaque=false;
 	if (2!=doDiffuse && !dontTrace && nsamples!=0) {
-		rc.mtlresult.color+=computeReflections(rc, reflectTransp);
+		renderElements.reflection=computeReflections(rc, reflectTransp, renderElements.reflectionFilter);
+		rc.mtlresult.color+=renderElements.reflection;
 		reflectOpaque=(reflectTransp<1e-6f);
 	}
 
 	if (!reflectOpaque) {
-		Color diffuse=params.diffuse*reflectTransp;
-		if (doDiffuse) rc.mtlresult.color+=rc.evalDiffuse()*diffuse*(1.0f-params.sssMix);
+		renderElements.diffuseFilter=params.diffuse*reflectTransp;
+		if (doDiffuse) {
+			renderElements.rawGI=rc.evalDiffuse()*(1.0f-params.sssMix);
+			renderElements.gi=renderElements.rawGI*renderElements.diffuseFilter;
+			rc.mtlresult.color+=renderElements.gi;
+		}
 
-		if (params.sssMix>1e-6f && diffuse.sum()>1e-6f) {
-			VR::Color rawSSSResult=computeRawSSS(rc, diffuse);
-			rc.mtlresult.color+=rawSSSResult*params.sssMix*diffuse;
+		if (params.sssMix>1e-6f && renderElements.diffuseFilter.sum()>1e-6f) {
+			renderElements.rawSSS=computeRawSSS(rc, renderElements.diffuseFilter)*params.sssMix;
+			renderElements.sss=renderElements.rawSSS*renderElements.diffuseFilter;
+			rc.mtlresult.color+=renderElements.sss;
 		}
 	}
 
 	rc.mtlresult.transp=params.transparency;
 	rc.mtlresult.alpha=params.transparency.whiteComplement();
 	rc.mtlresult.alphaTransp=params.transparency;
+
+	Fragment *f=(Fragment*) rc.mtlresult.fragment;
+	if (f) {
+		renderElements.finalColor=finalColor+rc.mtlresult.color;
+		writeRenderElements(f, renderElements);
+	}
 }
 
 static const VR::Color red(1.0f, 0.0f, 0.0f);
@@ -238,7 +321,7 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 
 struct ReflectionsSampler: AdaptiveColorSampler {
 	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf, const VR::Color &color, float roughness, float eta, ALReflectDistribution mode, const Vector &normal, const Matrix &nm, const Matrix &inm)
-		:fresnelSum(0.0f), bsdf(bsdf), color(color), roughness(roughness), eta(eta), mode(mode), normal(normal), nm(nm), inm(inm)
+		:fresnelSum(0.0f), bsdf(bsdf), color(color), roughness(roughness), eta(eta), mode(mode), normal(normal), nm(nm), inm(inm), reflectionFilter(0.0f, 0.0f, 0.0f)
 	{}
 
 	VR::Color sampleColor(const VR::VRayContext &rc, VR::VRayContext &nrc, float uc, VR::ValidType &valid) VRAY_OVERRIDE {
@@ -280,18 +363,28 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 		// Trace the ray
 		Color col=nrc.traceCurrentRay();
 
-		// Apply reflectoin color, fresnel and BRDF value
-		col*=color*brdfMult*fresnel;
+		// Apply BRDF value
+		col*=brdfMult;
 
+		// Apply reflection color and Fresnel
+		Color filter=(color*fresnel);
+		reflectionFilter+=filter;
+
+		col*=filter;
 		return col;
 	}
 
 	void multResult(float m) VRAY_OVERRIDE {
 		fresnelSum*=m;
+		reflectionFilter*=m;
 	}
 
-	float getFresnel(void) {
+	float getFresnel(void) const {
 		return fresnelSum;
+	}
+
+	Color getReflectionFilter(void) const {
+		return reflectionFilter;
 	}
 
 protected:
@@ -304,9 +397,11 @@ protected:
 	const Vector &normal;
 	const Matrix &nm;
 	const Matrix &inm;
+
+	Color reflectionFilter;
 };
 
-Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
+Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp, Color &reflectionFilter) {
 	// Create a new context
 	VRayContext &nrc=rc.newSpawnContext(2, params.reflectColor1*viewFresnel1, RT_REFLECT | RT_GLOSSY | RT_ENVIRONMENT, gnormal);
 
@@ -327,6 +422,7 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
 	if (params.reflectColor1.sum()>1e-6f) {
 		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor1, params.reflectRoughness1, eta1, params.reflectMode1, params.reflectNormal1, nm1, inm1);
 		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x6763223);
+		reflectionFilter+=reflectionsSampler.getReflectionFilter();
 		reflectTransp=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor1.maxComponentValue());
 	}
 
@@ -335,6 +431,7 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp) {
 		nrc.rayparams.multResult=nrc.rayparams.currentMultResult=params.reflectColor2*viewFresnel2*reflectTransp;
 		ReflectionsSampler reflectionsSampler(rc, *this, params.reflectColor2*reflectTransp, params.reflectRoughness2, eta2, params.reflectMode2, params.reflectNormal2, nm2, inm2);
 		reflections+=reflectionsSampler.sample(rc, nrc, nsamples, 0x3223AC2);
+		reflectionFilter+=reflectionsSampler.getReflectionFilter();
 		reflectTransp*=1.0f-(reflectionsSampler.getFresnel()*params.reflectColor2.maxComponentValue());
 	}
 
@@ -366,5 +463,59 @@ BRDFSampler* MyBaseBSDF::getBRDF(BSDFSide side) {
 			if (!origBackside) return NULL;
 		}
 		return static_cast<BRDFSampler*>(this);
+	}
+}
+
+int MyBaseBSDF::getUseIrradianceMap(void) {
+	// Use irradiance map/light cache for diffuse GI
+	int flags=BRDF_FLAG_USE_CACHED_GI;
+
+	// We generate our own lighting render elements
+	flags|=BRDF_FLAG_CUSTOM_RENDER_ELEMENTS;
+
+	return flags;
+}
+
+inline Color divideColor(const Color &a, const Color &b) {
+	Color res;
+	for (int i=0; i<3; i++) {
+		if (b[i]>1e-6f) res[i]=a[i]/b[i];
+		else res[i]=0.0f;
+	}
+	return res;
+}
+
+void MyBaseBSDF::writeRenderElements(Fragment *f, const RenderElementsResults &renderElements) {
+	f->setChannelDataByAlias(REG_CHAN_VFB_DIFFUSE, &renderElements.diffuseFilter);
+	f->setChannelDataByAlias(REG_CHAN_VFB_GI, &renderElements.gi);
+	f->setChannelDataByAlias(REG_CHAN_VFB_LIGHTING, &renderElements.diffuseLighting);
+
+	// Because of the glossy Fresnel, it is difficult to predict what the raw lighting should
+	// look like, so we just derive it from the diffuse filter and the raw lighting.
+	Color rawDiffuseLighting=divideColor(renderElements.diffuseLighting, renderElements.diffuseFilter);
+	f->setChannelDataByAlias(REG_CHAN_VFB_RAWLIGHT, &rawDiffuseLighting);
+
+	f->setChannelDataByAlias(REG_CHAN_VFB_TOTALLIGHT, &renderElements.gi);
+	f->setChannelDataByAlias(REG_CHAN_VFB_TOTALLIGHT, &renderElements.diffuseLighting);
+
+	f->setChannelDataByAlias(REG_CHAN_VFB_RAWGI, &renderElements.rawGI);
+	f->setChannelDataByAlias(REG_CHAN_VFB_RAWTOTALLIGHT, &renderElements.rawGI);
+	f->setChannelDataByAlias(REG_CHAN_VFB_RAWTOTALLIGHT, &rawDiffuseLighting);
+
+	f->setChannelDataByAlias(REG_CHAN_VFB_REFLECTION_FILTER, &renderElements.reflectionFilter);
+	f->setChannelDataByAlias(REG_CHAN_VFB_REFLECT, &renderElements.reflection);
+
+	// Because of the glossy Fresnel, it is difficult to predict what the raw reflection should
+	// look like, so we just derive it from the reflection filter and the raw reflections.
+	Color rawReflection=divideColor(renderElements.reflection, renderElements.reflectionFilter);
+	f->setChannelDataByAlias(REG_CHAN_VFB_RAW_REFLECTION, &renderElements.rawReflection);
+	
+	f->setChannelDataByAlias(REG_CHAN_VFB_SPECULAR, &renderElements.specularLighting);
+	f->setChannelDataByAlias(REG_CHAN_VFB_SSS2, &renderElements.sss);
+
+	if (params.renderChannels) {
+		for (int i=0; i<params.renderChannels->count(); i++) {
+			f->setChannelData((*params.renderChannels)[i], &renderElements.finalColor);
+		}
 	}
 }
