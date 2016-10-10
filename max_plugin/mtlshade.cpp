@@ -139,7 +139,6 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	params.reflectNormal2=getBumpNormal(rc, SUBTEXNO_REFLECT2_BUMP, bumpNormal);
 
 	params.transparency=combineTex(rc, toColor(opacity), SUBTEXNO_OPACITY).whiteComplement();
-	params.subdivs=8;
 	params.doubleSided=true;
 
 	params.sssMode=(sssMode==0? VR::alSSSMode_diffusion : VR::alSSSMode_directional);
@@ -160,6 +159,11 @@ VR::BSDFSampler* SkeletonMaterial::newBSDF(const VR::VRayContext &rc, VR::VRende
 	params.sssDensityScale=sssDensityScale;
 
 	params.renderChannels=&renderChannels;
+
+	params.reflectMaxDepth=reflectMaxDepth;
+	params.reflectSubdivs=reflectSubdivs;
+	params.sssSubdivs=sssSubdivs;
+
 	params.normalizeWeights();
 
 	bsdf->init(rc);

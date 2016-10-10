@@ -28,7 +28,6 @@ struct ALBSDFParams {
 	float reflectIOR2;
 	ALReflectDistribution reflectMode2;
 	
-	int subdivs;
 	Color transparency;
 	int doubleSided;
 
@@ -54,6 +53,10 @@ struct ALBSDFParams {
 	Vector reflectNormal2;
 
 	LayeredBSDFRenderChannels *renderChannels; // A list of material select render elements.
+
+	int reflectMaxDepth;
+	int reflectSubdivs;
+	int sssSubdivs;
 
 	void normalizeWeights(void) {
 		float sssSum=sssWeight1+sssWeight2+sssWeight3;
@@ -145,7 +148,8 @@ protected:
 	int dontTrace; // true if we need to trace reflections and false otherwise
 	int origBackside;
 
-	int nsamples;
+	int reflectSamples;
+	int sssSamples;
 
 	Vector normal, gnormal;
 

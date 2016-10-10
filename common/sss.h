@@ -327,6 +327,7 @@ VR::Color alsDiffusion(
 	bool directional,
 	int numComponents,
 	float sssMix,
-	const VR::Color &diffuse
+	const VR::Color &diffuse,
+	int nsamples
 );
 

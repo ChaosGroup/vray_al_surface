@@ -264,7 +264,6 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 	params.reflectNormal2=getBumpNormal(reflectBumpParams[1], rcc);
 
 	params.transparency=1.0f-getTexture(rc, opacity, defaultOpacity);
-	params.subdivs=8;
 	params.doubleSided=true;
 
 	params.sssMode=(sssMode==0? VR::alSSSMode_diffusion : VR::alSSSMode_directional);
@@ -284,6 +283,11 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 	params.sssRadius3=getTexture(rc, sssRadius[2], defaultSSSRadius3, false  /* clamp */);
 
 	params.renderChannels=NULL;
+
+	params.reflectMaxDepth=defaultReflectMaxDepth;
+	params.reflectSubdivs=defaultReflectSubdivs;
+	params.sssSubdivs=defaultSSSSubdivs;
+
 	params.normalizeWeights();
 
 	bsdf->init(rc);

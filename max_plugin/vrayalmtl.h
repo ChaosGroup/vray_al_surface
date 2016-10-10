@@ -34,7 +34,18 @@ extern ClassDesc* GetSkeletonMtlDesc();
 enum { mtl_params, }; 
 
 // Parameter map IDs
-enum { map_basic, map_diffuse, map_sss1, map_sss2, map_sss3, map_reflect1, map_reflect2, map_textures, NUM_PMAPS };
+enum {
+	map_basic,
+	map_diffuse,
+	map_sss1,
+	map_sss2,
+	map_sss3,
+	map_reflect1,
+	map_reflect2,
+	map_options,
+	map_textures,
+	NUM_PMAPS
+};
 
 // Paramblock2 parameter list
 enum {
@@ -107,6 +118,10 @@ enum {
 	mtl_diffuse_bump_tex, mtl_diffuse_bump_tex_on, mtl_diffuse_bump_tex_mult,
 	mtl_reflect_bump1_tex, mtl_reflect_bump1_tex_on, mtl_reflect_bump1_tex_mult,
 	mtl_reflect_bump2_tex, mtl_reflect_bump2_tex_on, mtl_reflect_bump2_tex_mult,
+
+	mtl_reflect_max_depth,
+	mtl_reflect_subdivs,
+	mtl_sss_subdivs,
 };
 
 enum {
@@ -218,6 +233,10 @@ public:
 	float sssRadius1, sssRadius2, sssRadius3;
 	float sssWeight1, sssWeight2, sssWeight3;
 	Color sssColor1, sssColor2, sssColor3;
+
+	int reflectMaxDepth;
+	int reflectSubdivs;
+	int sssSubdivs;
 
 	Texmap *subtex[NSUBTEX];
 	float subtexMult[NSUBTEX];

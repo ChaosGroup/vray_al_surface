@@ -572,7 +572,8 @@ VR::Color alsDiffusion(
 	bool directional,
 	int numComponents,
 	float sssMix,
-	const VR::Color &diffuseColor
+	const VR::Color &diffuseColor,
+	int nsamples
 )
 {
 	VR::Color multResult=sssMix*diffuseColor;
@@ -586,7 +587,6 @@ VR::Color alsDiffusion(
 	
 	VR::VRayContext &nrc=rc.newSpawnContext(0, multResult, 0, rc.rayresult.gnormal);
 
-	int nsamples=8;
 	if (rc.rayparams.currentPass==RPASS_GI) nsamples=0;
 
 	VR::Color result_sss=multiScatterSampler.sample(rc, nrc, nsamples, 0x84323);

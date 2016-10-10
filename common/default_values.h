@@ -37,4 +37,8 @@ const float defaultSSSWeight3=1.0f;
 #define defaultSSSColor3 Color(0.523f, 0.637f, 0.667f)
 const float defaultSSSRadius3=0.75f;
 
+const int defaultReflectMaxDepth=5;
+const int defaultReflectSubdivs=8;
+const int defaultSSSSubdivs=8;
+
 #endif

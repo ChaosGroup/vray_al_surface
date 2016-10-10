@@ -193,7 +193,7 @@ int ctrlID(void) { return numID++; }
 
 static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0, &SkelMtlCD, P_AUTO_CONSTRUCT + P_AUTO_UI + P_MULTIMAP, 0, 
 	//rollouts
-	8,
+	9,
 	map_basic, 0, IDS_PARAMETERS, 0, 0, NULL,
 	map_diffuse, 0, IDS_PARAMETERS, 0, 0, NULL,
 	map_sss1, 0, IDS_PARAMETERS, 0, 0, NULL,
@@ -201,6 +201,7 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 	map_sss3, 0, IDS_PARAMETERS, 0, 0, NULL,
 	map_reflect1, 0, IDS_PARAMETERS, 0, 0, NULL,
 	map_reflect2, 0, IDS_PARAMETERS, 0, 0, NULL,
+	map_options, 0, IDS_PARAMETERS, 0, 0, NULL,
 	map_textures, 0, IDS_PARAMETERS, 0, 0, NULL,
 
 	// params
@@ -377,6 +378,22 @@ static ParamBlockDesc2 smtl_param_blk ( mtl_params, _T("VRayAL parameters"),  0,
 		p_ui, map_sss3, TYPE_SPINNER, EDITTYPE_FLOAT, ctrlID(), ctrlID(), 0.01f,
 	PB_END,
 	DEFINE_SUBTEX_SHORTMAP(SUBTEXNO_SSS3_RADIUS, "sss3_radius_texture", 100.0f, 0.0f, 100.0f, map_sss3),
+
+	mtl_reflect_max_depth, _T("reflect_max_depth"), TYPE_INT, 0, 0,
+		p_default, defaultReflectMaxDepth,
+		p_range, 0, 100,
+		p_ui, map_options, TYPE_SPINNER, EDITTYPE_INT, ctrlID(), ctrlID(), SPIN_AUTOSCALE,
+	PB_END,
+	mtl_reflect_subdivs, _T("reflect_subdivs"), TYPE_INT, 0, 0,
+		p_default, defaultReflectSubdivs,
+		p_range, 1, 1000,
+		p_ui, map_options, TYPE_SPINNER, EDITTYPE_INT, ctrlID(), ctrlID(), SPIN_AUTOSCALE,
+	PB_END,
+	mtl_sss_subdivs, _T("sss_subdivs"), TYPE_INT, 0, 0,
+		p_default, defaultSSSSubdivs,
+		p_range, 1, 1000,
+		p_ui, map_options, TYPE_SPINNER, EDITTYPE_INT, ctrlID(), ctrlID(), SPIN_AUTOSCALE,
+	PB_END,
 PB_END
 );
 
@@ -456,6 +473,7 @@ ParamMapInfo pmapInfo[NUM_PMAPS]={
 	{ _T("SSS 3"), 0 },
 	{ _T("Reflection 1"), 0, },
 	{ _T("Reflection 2"), 0, },
+	{ _T("Options and sampling"), APPENDROLL_CLOSED },
 	{ _T("Textures"), APPENDROLL_CLOSED }
 };
 
@@ -846,6 +864,10 @@ void SkeletonMaterial::Update(TimeValue t, Interval& valid) {
 
 		pblock->GetValue(mtl_sssDensityScale, t, sssDensityScale, ivalid);
 		pblock->GetValue(mtl_diffuseStrength, t, diffuseStrength, ivalid);
+
+		pblock->GetValue(mtl_reflect_max_depth, t, reflectMaxDepth, ivalid);
+		pblock->GetValue(mtl_reflect_subdivs, t, reflectSubdivs, ivalid);
+		pblock->GetValue(mtl_sss_subdivs, t, sssSubdivs, ivalid);
 	}
 
 	valid &= ivalid;

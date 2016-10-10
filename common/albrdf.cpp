@@ -18,7 +18,8 @@ inline void invertIOR(float &ior) {
 void MyBaseBSDF::init(const VRayContext &rc) {
 	origBackside=rc.rayresult.realBack;
 
-	nsamples=sqr(params.subdivs);
+	reflectSamples=sqr(params.reflectSubdivs);
+	sssSamples=sqr(params.sssSubdivs);
 
 	// Set the normals to use for lighting
 	normal=rc.rayresult.normal;
@@ -56,8 +57,12 @@ void MyBaseBSDF::init(const VRayContext &rc) {
 	const VR::VRaySequenceData &sdata=rc.vray->getSequenceData();
 
 	// Check if we need to trace the reflection
+	int maxDepth=params.reflectMaxDepth;
+	if (maxDepth==-1)
+		maxDepth=sdata.params.options.mtl_maxDepth;
+
 	dontTrace=p_or(
-		p_or(rc.rayparams.totalLevel>=sdata.params.options.mtl_maxDepth, 0==sdata.params.options.mtl_reflectionRefraction),
+		p_or(rc.rayparams.totalLevel>=maxDepth, 0==sdata.params.options.mtl_reflectionRefraction),
 		0!=(rc.rayparams.rayType & RT_INDIRECT)
 	);
 
@@ -229,7 +234,7 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 
 	float reflectTransp=1.0f;
 	int reflectOpaque=false;
-	if (2!=doDiffuse && !dontTrace && nsamples!=0) {
+	if (2!=doDiffuse && !dontTrace && reflectSamples!=0) {
 		renderElements.reflection=computeReflections(rc, reflectTransp, renderElements.reflectionFilter);
 		rc.mtlresult.color+=renderElements.reflection;
 		reflectOpaque=(reflectTransp<1e-6f);
@@ -298,7 +303,7 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 	}
 
 	bool directional=(params.sssMode==alSSSMode_directional);
-	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse);
+	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse, sssSamples);
 
 	return result_sss;
 }
@@ -397,7 +402,7 @@ Color MyBaseBSDF::computeReflections(VRayContext &rc, float &reflectTransp, Colo
 	nrc.rayparams.tracedRay.p=rc.rayresult.wpoint; // Set the new ray origin to be the surface hit point
 
 	// Figure out how many samples to take
-	int nsamples=this->nsamples;
+	int nsamples=this->reflectSamples;
 	if (rc.rayparams.currentPass==RPASS_GI || (rc.rayparams.rayType & RT_LIGHT)!=0 || params.reflectRoughness1<1e-6f) nsamples=0;
 
 	Color reflections(0.0f, 0.0f, 0.0f);
