@@ -37,6 +37,10 @@ protected:
 	TextureFloatInterface *sssWeight[3];
 	TextureInterface *sssColor[3];
 	TextureFloatInterface *sssRadius[3];
+
+	int reflectMaxDepth;
+	int reflectSubdivs;
+	int sssSubdivs;
 };
 
 #define BRDFAlSurface_PluginID PluginID(LARGE_CONST(2016082656))
@@ -93,6 +97,10 @@ BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
 	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
 	addParamTexture("sss3_color", defaultSSSColor3, -1, "Color of the third SSS component");
 	addParamTextureFloat("sss3_radius", defaultSSSRadius3, -1, "Radius for the third SSS component. Larger values cause light to go deeper into the surface");
+
+	addParamInt("reflect_max_depth", defaultReflectMaxDepth, -1, "Maximum depth for reflections; set to -1 to use the global depth");
+	addParamInt("reflect_subdivs", defaultReflectSubdivs, -1, "Subdivs for sampling reflections when local subdivs are enabled");
+	addParamInt("sss_subdivs", defaultSSSSubdivs, -1, "Subdivs for sampling SSS when local subdivs are enabled");
 }
 
 BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(pluginDesc) {
@@ -140,6 +148,10 @@ BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(
 	paramList->setParamCache("sss3_weight", &sssWeight[2]);
 	paramList->setParamCache("sss3_color", &sssColor[2]);
 	paramList->setParamCache("sss3_radius", &sssRadius[2]);
+
+	paramList->setParamCache("reflect_max_depth", &reflectMaxDepth);
+	paramList->setParamCache("reflect_subdivs", &reflectSubdivs);
+	paramList->setParamCache("sss_subdivs", &sssSubdivs);
 
 	// We only have a bump texture, and it is multiplied by the bumpMult, so set the
 	// bumpMult to 1.0 here.
@@ -284,9 +296,9 @@ void BRDFAlSurface::initBSDF(const VRayContext &rc, MyBaseBSDF *bsdf, VR::BSDFFl
 
 	params.renderChannels=NULL;
 
-	params.reflectMaxDepth=defaultReflectMaxDepth;
-	params.reflectSubdivs=defaultReflectSubdivs;
-	params.sssSubdivs=defaultSSSSubdivs;
+	params.reflectMaxDepth=reflectMaxDepth;
+	params.reflectSubdivs=reflectSubdivs;
+	params.sssSubdivs=sssSubdivs;
 
 	params.normalizeWeights();
 
