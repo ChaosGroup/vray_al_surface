@@ -43,7 +43,7 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Chaos Software Ltd"
             VALUE "FileVersion", "3.1.0.0"
-            VALUE "LegalCopyright", "Copyright © 2016 by Chaos Group Ltd"
+            VALUE "LegalCopyright", "Copyright © 2016-2017 by Chaos Group Ltd"
             VALUE "ProductVersion", "3.1.0.0"
         END
     END
@@ -59,8 +59,8 @@ END
 // Bitmap
 //
 
-bm_MTL                  BITMAP                  "M:\\vraysdk\\samples\\3dsmax_plugins\\common\\bmp00001.bmp"
-bm_MTLMASK              BITMAP                  "M:\\vraysdk\\samples\\3dsmax_plugins\\common\\bmp00002.bmp"
+bm_MTL                  BITMAP                  "..\\common\\bmp00001.bmp"
+bm_MTLMASK              BITMAP                  "..\\common\\bmp00002.bmp"
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 

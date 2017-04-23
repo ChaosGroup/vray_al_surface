@@ -133,8 +133,27 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 		if (computeSpecular1) {
 			float probReflection=0.0f;
 			float brdfValue=0.0f;
-			if (params.reflectMode1==alReflectDistribution_GGX) brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness1, 2.0f, params.reflectNormal1, nm1, inm1, probReflection, false);
-			else brdfValue=beckmannBRDF(rc.rayparams.viewDir, direction, params.reflectRoughness1, params.reflectNormal1, nm1, inm1, probReflection);
+			if (params.reflectMode1==alReflectDistribution_GGX) {
+				brdfValue=ggxBRDFMixed3f(
+					rc.rayparams.getViewDir3f(),
+					simd::Vector3f(direction),
+					params.reflectRoughness1, 2.0f,
+					simd::Vector3f(params.reflectNormal1),
+					nm1, inm1,
+					probReflection,
+					false
+				);
+			}
+			else {
+				brdfValue=beckmannBRDF3f(
+					rc.rayparams.getViewDir3f(),
+					simd::Vector3f(direction),
+					params.reflectRoughness1,
+					simd::Vector3f(params.reflectNormal1),
+					nm1, inm1,
+					probReflection
+				);
+			}
 
 			float k=getReflectionWeight(probLight, probReflection);
 			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, params.reflectNormal1, eta1);
@@ -157,8 +176,26 @@ Color MyBaseBSDF::eval(const VRayContext &rc, const Vector &direction, Color &li
 		if (computeSpecular2) {
 			float probReflection=0.0f;
 			float brdfValue=0.0f;
-			if (params.reflectMode2==alReflectDistribution_GGX) brdfValue=ggxBRDFMixed(rc.rayparams.viewDir, direction, params.reflectRoughness2, 2.0f, params.reflectNormal2, nm2, inm2, probReflection, false);
-			else brdfValue=beckmannBRDF(rc.rayparams.viewDir, direction, params.reflectRoughness2, params.reflectNormal2, nm2, inm2, probReflection);
+			if (params.reflectMode2==alReflectDistribution_GGX) {
+				brdfValue=ggxBRDFMixed3f(
+					rc.rayparams.getViewDir3f(),
+					simd::Vector3f(direction),
+					params.reflectRoughness2, 2.0f,
+					simd::Vector3f(params.reflectNormal2),
+					nm2, inm2,
+					probReflection,
+					false
+				);
+			} else {
+				brdfValue=beckmannBRDF3f(
+					rc.rayparams.getViewDir3f(),
+					simd::Vector3f(direction),
+					params.reflectRoughness2,
+					simd::Vector3f(params.reflectNormal2),
+					nm2, inm2,
+					probReflection
+				);
+			}
 
 			float k=getReflectionWeight(probLight, probReflection);
 			float fresnel=computeDielectricFresnel(rc.rayparams.viewDir, direction, params.reflectNormal2, eta2);
@@ -221,8 +258,6 @@ void MyBaseBSDF::lightFinished(int last) {
 }
 
 void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
-	rc.mtlresult.clear();
-
 	RenderElementsResults renderElements;
 	renderElements.makeZero();
 
@@ -249,9 +284,27 @@ void MyBaseBSDF::traceForward(VRayContext &rc, int doDiffuse) {
 		}
 
 		if (params.sssMix>1e-6f && renderElements.diffuseFilter.sum()>1e-6f) {
-			renderElements.rawSSS=computeRawSSS(rc, renderElements.diffuseFilter)*params.sssMix;
-			renderElements.sss=renderElements.rawSSS*renderElements.diffuseFilter;
-			rc.mtlresult.color+=renderElements.sss;
+			// We accumulate the raw SSS, along with any raw light select contributions,
+			// into a temporary shading result. This result is later multiplied by the sssMix value
+			// and the diffuse color.
+			ShadeResult sssResult;
+			if (rc.mtlresult.fragment) sssResult.fragment=rc.fragmentList->getFragmentManager()->newFragment();
+			sssResult.clear();
+
+			computeRawSSS(rc, renderElements.diffuseFilter, sssResult);
+
+			sssResult*=params.sssMix;
+			renderElements.rawSSS=sssResult.color;
+
+			sssResult*=renderElements.diffuseFilter;
+			renderElements.sss=sssResult.color;
+
+			sssResult.alpha.makeZero();
+			sssResult.transp.makeZero();
+			sssResult.alphaTransp.makeZero();
+
+			rc.mtlresult.add(sssResult, fbm_normal);
+			if (sssResult.fragment) rc.fragmentList->getFragmentManager()->deleteFragment(sssResult.fragment);
 		}
 	}
 
@@ -270,7 +323,7 @@ static const VR::Color red(1.0f, 0.0f, 0.0f);
 static const VR::Color green(0.0f, 1.0f, 0.0f);
 static const VR::Color blue(0.0f, 0.0f, 1.0f);
 
-VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
+void MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse, ShadeResult &result) {
 	int nc=3;
 	if (params.sssWeight2>0.0f) nc=6;
 	if (params.sssWeight3>0.0f) nc=9;
@@ -303,13 +356,11 @@ VR::Color MyBaseBSDF::computeRawSSS(VRayContext &rc, const Color &diffuse) {
 	}
 
 	bool directional=(params.sssMode==alSSSMode_directional);
-	VR::Color result_sss=alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse, sssSamples);
-
-	return result_sss;
+	alsDiffusion(rc, &diffusion_msgdata, directional, nc, params.sssMix, diffuse, sssSamples, result);
 }
 
 struct ReflectionsSampler: AdaptiveColorSampler {
-	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf, const VR::Color &color, float roughness, float eta, ALReflectDistribution mode, const Vector &normal, const Matrix &nm, const Matrix &inm)
+	ReflectionsSampler(const VRayContext &rc, MyBaseBSDF &bsdf, const VR::Color &color, float roughness, float eta, ALReflectDistribution mode, const Vector &normal, const simd::Matrix3x3f &nm, const simd::Matrix3x3f &inm)
 		:fresnelSum(0.0f), bsdf(bsdf), color(color), roughness(roughness), eta(eta), mode(mode), normal(normal), nm(nm), inm(inm), reflectionFilter(0.0f, 0.0f, 0.0f)
 	{}
 
@@ -329,9 +380,9 @@ struct ReflectionsSampler: AdaptiveColorSampler {
 		} else {
 			// Compute a reflection direction
 			if (mode==alReflectDistribution_GGX) {
-				dir=ggxDirMixed(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, 2.0f, rc.rayparams.viewDir, nm, nrc.rayparams.rayProbability, brdfMult, false, inm);
+				dir=ggxDirMixed3f(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, 2.0f, rc.rayparams.getViewDir3f(), nm, nrc.rayparams.rayProbability, brdfMult, false, inm).toVector();
 			} else {
-				dir=beckmannDir(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, rc.rayparams.viewDir, nm, nrc.rayparams.rayProbability, brdfMult);
+				dir=beckmannDir3f(uc, AdaptiveColorSampler::getDMCParam(nrc, 1), roughness, rc.rayparams.getViewDir3f(), nm, nrc.rayparams.rayProbability, brdfMult).toVector();
 			}
 
 			// If this is below the surface, ignore
@@ -384,8 +435,8 @@ protected:
 	Color color;
 	ALReflectDistribution mode;
 	const Vector &normal;
-	const Matrix &nm;
-	const Matrix &inm;
+	const simd::Matrix3x3f &nm;
+	const simd::Matrix3x3f &inm;
 
 	Color reflectionFilter;
 };
@@ -436,8 +487,8 @@ Color MyBaseBSDF::getTransparency(const VRayContext &rc) {
 
 RenderChannelsInfo* MyBaseBSDF::getRenderChannels(void) { return &RenderChannelsInfo::reflectChannels; }
 
-void MyBaseBSDF::computeNormalMatrix(const VR::VRayContext &rc, const VR::Vector &normal, VR::Matrix &nm) {
-	makeNormalMatrix(normal, nm);
+void MyBaseBSDF::computeNormalMatrix(const VR::VRayContext &rc, const VR::Vector &normal, simd::Matrix3x3f &nm) {
+	makeNormalMatrix3f(simd::Vector3f(normal), nm);
 }
 
 // From BSDFSampler

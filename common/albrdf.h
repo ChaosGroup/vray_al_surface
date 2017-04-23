@@ -1,7 +1,8 @@
-#ifndef __BLINN_BRDF_SAMPLER__
-#define __BLINN_BRDF_SAMPLER__
+#ifndef __ALBRDF_SAMPLER__
+#define __ALBRDF_SAMPLER__
 
 #include "brdfs.h"
+#include "matrix_simd.hpp"
 
 namespace VUtils {
 
@@ -153,8 +154,8 @@ protected:
 
 	Vector normal, gnormal;
 
-	Matrix nm1, inm1; // A matrix with the normal as the z-axis; can be used for anisotropy
-	Matrix nm2, inm2;
+	simd::Matrix3x3f nm1, inm1; // A matrix with the normal as the z-axis; can be used for anisotropy
+	simd::Matrix3x3f nm2, inm2;
 
 	float viewFresnel1; // An crude estimate of the Fresnel, used in getLightMult().
 	float eta1; // Inverse of ior1
@@ -167,9 +168,9 @@ protected:
 	int computeSpecular1; // true if primary specular needs to be computed in the eval() method.
 	int computeSpecular2; // true if the secondary specular needs to be computed in the eval() method.
 
-	virtual void computeNormalMatrix(const VRayContext &rc, const Vector &normal, Matrix &nm);
+	virtual void computeNormalMatrix(const VRayContext &rc, const Vector &normal, simd::Matrix3x3f &nm);
 
-	Color computeRawSSS(VRayContext &rc, const Color &diffuse);
+	void computeRawSSS(VRayContext &rc, const Color &diffuse, ShadeResult &result);
 
 	Color computeReflections(VRayContext &rc, float &reflectTransp, Color &reflectionFilter);
 
@@ -199,7 +200,7 @@ public:
 	RenderChannelsInfo* getRenderChannels(void);
 
 	// From BSDFSampler
-	BRDFSampler *getBRDF(BSDFSide side);
+	BRDFSampler *getBRDF(BSDFSide side) VRAY_OVERRIDE;
 
 	// Other methods
 	const Vector& getGNormal(void) const { return gnormal; }

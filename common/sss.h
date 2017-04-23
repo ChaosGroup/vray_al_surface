@@ -63,18 +63,14 @@ struct ScatteringProfileDirectional
 	float pdf;
 };
 
-struct DiffusionSample
-{
+struct DiffusionSample {
 	VR::Vector P;     //< sampled point
 	VR::Vector N;     //< normal at sample
 	VR::Vector Ng;    //< geometric normal at sample
 	VR::Color R;        //< diffusion result at sample
-	VR::Color Rd;       //< convolved diffusion result
 	VR::Vector S;     //< vector from shading point to sample
 	float r;        //< distance from shading point to sample
 	float b;        //< bounce attenuation factor
-	VR::Color lightGroupsDirect[8];
-	VR::Color lightGroupsIndirect[8];
 };
 
 struct DirectionalMessageData
@@ -83,17 +79,13 @@ struct DirectionalMessageData
 	float maxdist;
 	VR::Vector Po;
 	VR::Vector No;
-	// AtVector U;
-	// AtVector V;
 	VR::Vector wo;
 	ScatteringProfileDirectional sp[9];
 	VR::Color weights[9];
 	int numComponents;
 	bool directional;
-	// AtShaderGlobals* sg;
 	DiffusionSample samples[SSS_MAX_SAMPLES];
-	// VR::Color* deepGroupPtr;
-	// AtNode* shader_orig;
+	int sssSurfaceID;
 };
 
 inline float diffusionSampleDistance(float u1, float sigma)
@@ -142,8 +134,6 @@ inline VR::Color dipoleProfileRd(float r, const VR::Color& sigma_tr, const VR::C
 	);
 }
 
-#define DD_SINGLE_PRECISION 
-#ifdef DD_SINGLE_PRECISION
 // Directional dipole profile evaluation
 // see: http://www.ci.i.u-tokyo.ac.jp/~hachisuka/dirpole.pdf
 // and: http://www.ci.i.u-tokyo.ac.jp/~hachisuka/dirpole.cpp
@@ -166,29 +156,6 @@ inline float Sp_d(const VR::Vector x, const VR::Vector w, const float r, const V
 	return VR::Max(Sp, 0.0f);
 	return Sp;
 }
-#else
-inline double Sp_d(const AtVector x, const AtVector w, const double r, const AtVector n, const double sigma_tr, const double D, const double Cp_norm, 
-					const double Cp, const double Ce) 
-{
-	// evaluate the profile
-	const double s_tr_r = sigma_tr * r;
-	const double s_tr_r_one = 1.0 + s_tr_r;
-	const double x_dot_w = AiV3Dot(x, w);
-	const double r_sqr = r * r;
-	// if (r_sqr < 1.e-5) return 1.0;
-
-	const double t0 = Cp_norm * (1.0 / (4.0 * AI_PI * AI_PI)) * exp(-s_tr_r) / (r * r_sqr);
-	const double t1 = r_sqr / D + 3.0 * s_tr_r_one * x_dot_w;
-	const double t2 = 3.0 * D * s_tr_r_one * AiV3Dot(w, n);
-	const double t3 = (s_tr_r_one + 3.0 * D * (3.0 * s_tr_r_one + s_tr_r * s_tr_r) / r_sqr * x_dot_w) * AiV3Dot(x, n);
-
-	const double Sp = t0 * (Cp * t1 - Ce * (t2 - t3));
-	assert(AiIsFinite(Sp));
-	return std::max(Sp, 0.0);
-	return Sp;
-}
-#endif
-
 
 inline float directionalDipole(VR::Vector xi, VR::Vector ni, VR::Vector xo, VR::Vector no, VR::Vector wi, VR::Vector wo, ScatteringProfileDirectional& sp)
 {
@@ -208,7 +175,7 @@ inline float directionalDipole(VR::Vector xi, VR::Vector ni, VR::Vector xo, VR::
 	VR::Vector wv = wr - ni_s * (2.0f * VR::dotf(wr, ni_s));
 
 	// distance to real sources
-	const float cos_beta = -sqrtf((r * r - VR::dotf(xoxi, wr) * VR::dotf(xoxi, wr)) / (r * r + sp.de * sp.de));
+	const float cos_beta = -sqrtf(VR::Max(0.f,(r * r - VR::dotf(xoxi, wr) * VR::dotf(xoxi, wr)) / (r * r + sp.de * sp.de)));
 	float dr;
 	const float mu0 = -VR::dotf(ni, wr);
 	if (mu0 > 0.0) 
@@ -230,104 +197,23 @@ inline float directionalDipole(VR::Vector xi, VR::Vector ni, VR::Vector xo, VR::
 	return VR::Max(0.0f, result); 
 }
 
-#if 0
-inline AtRGB integrateDirectional(const ScatteringParamsDirectional& sp, float rmax, int steps)
-{
-	
-	float rstep = 1.0f / float(steps);
-
-	float ns = 0.0f;
-	AtPoint Po = AiPoint(0.0f, 0.0f, 0.0f);
-	AtVector up = AiVector(0.0f, 1.0f, 0.0f);
-	
-	AtRGB result = AI_RGB_BLACK;
-	/*
-	float sigma = minh(sp.sigma_tr);
-	for (float r = rstep/2; r < 1.0f; r += rstep)
-	{
-		int component;
-		float u = drand48();
-		if (u < 1.0f/3.0f) component = 0;
-		else if (u < 2.03 / 3.0f) component = 1;
-		else component = 2;
-
-		float rs = diffusionSampleDistance(r, sp.sigma_tr[component]);
-		if (rs > rmax) continue;
-
-		float pdf = (diffusionPdf(rs, sp.sigma_tr[0]) + diffusionPdf(rs, sp.sigma_tr[1]) + diffusionPdf(rs, sp.sigma_tr[2])) / 3.0f;
-
-		AtPoint Pi = AiPoint(rs, 0.0f, 0.0f);
-		result += directionalDipole(Pi, up, Po, up, up, up, sp) * rs / pdf;
-
-		ns++;
-	}
-
-	result /= ns;
-	*/
-	return result;
-}
-
-#define SSS_INT_HEMI_SAMPLES 30
-inline AtRGB integrateDirectionalHemi(const ScatteringParamsDirectional& sp, float rmax, int steps)
-{
-	float rstep = 1.0f / float(steps);
-
-	float ns = 0.0f;
-	AtPoint Po = AiPoint(0.0f, 0.0f, 0.0f);
-	AtVector up = AiVector(0.0f, 1.0f, 0.0f);
-	AtRGB result = AI_RGB_BLACK;
-	/*
-	float sigma = minh(sp.sigma_tr);
-	float hemi_step = 1.0f / SSS_INT_HEMI_SAMPLES;
-	for (float r = rstep/2; r < 1.0f; r += rstep)
-	{
-		int component;
-		float u = drand48();
-		if (u < 1.0f/3.0f) component = 0;
-		else if (u < 2.03 / 3.0f) component = 1;
-		else component = 2;
-
-		float rs = diffusionSampleDistance(r, sp.sigma_tr[component]);
-		if (rs > rmax) continue;
-
-		float pdf = (diffusionPdf(rs, sp.sigma_tr[0]) + diffusionPdf(rs, sp.sigma_tr[1]) + diffusionPdf(rs, sp.sigma_tr[2])) / 3.0f;
-
-		AtPoint Pi = AiPoint(rs, 0.0f, 0.0f);
-
-		for (float u1 = hemi_step/2; u1 < 1.0f; u1 += hemi_step)
-		{
-			for (float u2 = hemi_step/2; u2 < 1.0f; u2 += hemi_step)
-			{
-				AtVector wi = cosineSampleHemisphere(u1, u2);
-
-				result += directionalDipole(Pi, up, Po, up, wi, up, sp) * rs / pdf;
-
-				ns++;
-			}
-		}
-	}
-
-	result /= ns;
-	*/
-	return result;
-}
-#endif
-
-// Called at secondary hits of sub-surface sample rays.
-void alsIrradiateSample(
+// Called at secondary hits of sub-surface sample rays. Return the index
+// in dmd where the result is stored, or -1 if no result is computed.
+int alsIrradiateSample(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
-	const VR::Color &diffuse
+	const VR::Color &diffuse,
+	VR::ShadeResult &result // The SSS result is returned in result.color, along with any light select elements.
 );
 
 // Called for a direct hit of a ray with a SSS material surface.
-VR::Color alsDiffusion(
+void alsDiffusion(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
 	bool directional,
 	int numComponents,
 	float sssMix,
 	const VR::Color &diffuse,
-	int nsamples
+	int nsamples,
+	VR::ShadeResult &result // The SSS result is returned here in result.color along with any light select elements.
 );
-

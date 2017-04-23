@@ -44,63 +44,69 @@ protected:
 };
 
 #define BRDFAlSurface_PluginID PluginID(LARGE_CONST(2016082656))
+#ifdef __VRAY40__
+static const tchar *descText = "<PLEASE ADD A DESCRIPTION>";
+PLUGIN_DESC(BRDFAlSurface_PluginID, "BRDFAlSurface", descText, BRDFAlSurface, BRDFAlSurface_Params, EXT_BSDF);
+#else
 PLUGIN_DESC(BRDFAlSurface_PluginID, EXT_BSDF, "BRDFAlSurface", BRDFAlSurface, BRDFAlSurface_Params);
+#endif
+
 PLUGIN_LIBRARY("BRDFAlSurface", "V-Ray port of the alSurface shader");
 
 //************************************
 // Implementation
 
-#include "../common/default_values.h"
+#include "default_values.h"
 
 BRDFAlSurface_Params::BRDFAlSurface_Params(void) {
-	addParamTexture("bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Overall bump map (applied to all components)");
-	addParamTextureFloat("bump_amount", 1.0f, -1, "Bump amount");
+	addParamTexture("bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Overall bump map (applied to all components)", "attributes=(textureSlot), startTab=(V-Ray alSurface), startRollout=(Bump)");
+	addParamTextureFloat("bump_amount", 1.0f, -1, "Bump amount", "quantityType=(distance)");
 	addParamInt("bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
-	addParamTextureFloat("opacity", defaultOpacity, -1, "Opacity map", "minValue=(0), maxValue=(1)");
+	addParamTextureFloat("opacity", defaultOpacity, -1, "Opacity map", "minValue=(0), maxValue=(1), startRollout=(Diffuse and Opacity)");
 
-	addParamTexture("diffuse", defaultDiffuse, -1, "The diffuse surface color");
+	addParamTexture("diffuse", defaultDiffuse, -1, "The diffuse surface color", "displayName=(Diffuse Color), enable=(::diffuse_strength>0)");
 	addParamTextureFloat("diffuse_strength", defaultDiffuseStrength, -1, "The strength of the diffuse component", "minValue=(0), maxValue=(1)");
-	addParamTexture("diffuse_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additoinal diffuse bump map");
-	addParamTextureFloat("diffuse_bump_amount", 1.0f, -1, "Diffuse bump amount");
-	addParamInt("diffuse_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
+	addParamTexture("diffuse_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additoinal diffuse bump map", "enable=(::diffuse_strength>0), attributes=(textureSlot)");
+	addParamTextureFloat("diffuse_bump_amount", 1.0f, -1, "Diffuse bump amount", "quantityType=(distance), enable=(::diffuse_strength>0)");
+	addParamInt("diffuse_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES", enable=(::diffuse_strength>0)");
 
-	addParamTexture("reflect1", defaultReflect1, -1, "The first specular color");
-	addParamTextureFloat("reflect1_strength", defaultReflect1Strength, -1, "The strength of the first specular component", "minValue=(0), maxValue=(1)");
-	addParamTextureFloat("reflect1_roughness", defaultReflect1Roughness, -1, "The roughness of the first specular component", "minValue=(0), maxValue=(1)");
-	addParamTextureFloat("reflect1_ior", defaultReflect1IOR, -1, "The IOR for the first specular component");
-	addParamInt("reflect1_distribution", 0, -1, "The BRDF distribution type for the first specular component (0 - Beckmann, 1 - GGX)", "enum=(0:Beckmann;1:GGX)");
-	addParamTexture("reflect1_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additional bump map for the first specular component");
-	addParamTextureFloat("reflect1_bump_amount", 1.0f, -1, "Additional bump amount for the first speculer component");
-	addParamInt("reflect1_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
+	addParamTexture("reflect1", defaultReflect1, -1, "The first specular color", "displayName=(Reflect 1 Color), enable=(::reflect1_strength>0), startRollout=(Reflection 1)");
+	addParamTextureFloat("reflect1_strength", defaultReflect1Strength, -1, "The strength of the first specular component", "displayName=(Reflect 1 Strength), minValue=(0), maxValue=(1)");
+	addParamTextureFloat("reflect1_roughness", defaultReflect1Roughness, -1, "The roughness of the first specular component", "displayName=(Reflect 1 Roughness), minValue=(0), maxValue=(1), enable=(::reflect1_strength>0)");
+	addParamTextureFloat("reflect1_ior", defaultReflect1IOR, -1, "The IOR for the first specular component", "displayName=(Reflect 1 IOR), enable=(::reflect1_strength>0)");
+	addParamInt("reflect1_distribution", 0, -1, "The BRDF distribution type for the first specular component (0 - Beckmann, 1 - GGX)", "displayName=(Reflect 1 Distribution), enum=(0:Beckmann;1:GGX), enable=(::reflect1_strength>0)");
+	addParamTexture("reflect1_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additional bump map for the first specular component", "displayName=(Reflect 1 Bump Map), attributes=(textureSlot), enable=(::reflect1_strength>0)");
+	addParamTextureFloat("reflect1_bump_amount", 1.0f, -1, "Additional bump amount for the first speculer component", "displayName=(Reflect 1 Bump Amount), quantityType=(distance), enable=(::reflect1_strength>0)");
+	addParamInt("reflect1_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES", displayName=(Reflect 1 Bump Type), enable=(::reflect1_strength>0)");
 
-	addParamTexture("reflect2", defaultReflect2, -1, "The second specular color");
-	addParamTextureFloat("reflect2_strength", defaultReflect2Strength, -1, "The strength of the second specular component", "minValue=(0), maxValue=(1)");
-	addParamTextureFloat("reflect2_roughness", defaultReflect2Roughness, -1, "The roughness of the second specular component", "minValue=(0), maxValue=(1)");
-	addParamTextureFloat("reflect2_ior", defaultReflect2IOR, -1, "The IOR for the second specular component");
-	addParamInt("reflect2_distribution", 0, -1, "The BRDF distribution type for the second specular component (0 - Beckmann, 1 - GGX)", "enum=(0:Beckmann;1:GGX)");
-	addParamTexture("reflect2_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additional bump map for the second specular component");
-	addParamTextureFloat("reflect2_bump_amount", 1.0f, -1, "Additional bump amount for the second speculer component");
-	addParamInt("reflect2_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES);
+	addParamTexture("reflect2", defaultReflect2, -1, "The second specular color", "displayName=(Reflect 2 Color), enable=(::reflect2_strength>0), startRollout=(Reflection 2)");
+	addParamTextureFloat("reflect2_strength", defaultReflect2Strength, -1, "The strength of the second specular component", "displayName=(Reflect 2 Strength), minValue=(0), maxValue=(1)");
+	addParamTextureFloat("reflect2_roughness", defaultReflect2Roughness, -1, "The roughness of the second specular component", "displayName=(Reflect 2 Roughness), minValue=(0), maxValue=(1), enable=(::reflect2_strength>0)");
+	addParamTextureFloat("reflect2_ior", defaultReflect2IOR, -1, "The IOR for the second specular component", "displayName=(Reflect 2 IOR), enable=(::reflect2_strength>0)");
+	addParamInt("reflect2_distribution", 0, -1, "The BRDF distribution type for the second specular component (0 - Beckmann, 1 - GGX)", "displayName=(Reflect 2 Distribution), enum=(0:Beckmann;1:GGX), enable=(::reflect2_strength>0)");
+	addParamTexture("reflect2_bump_map", Color(0.0f, 0.0f, 0.0f), -1, "Additional bump map for the second specular component", "displayName=(Reflect 2 Bump Map), attributes=(textureSlot), enable=(::reflect2_strength>0)");
+	addParamTextureFloat("reflect2_bump_amount", 1.0f, -1, "Additional bump amount for the second speculer component", "displayName=(Reflect 2 Bump Amount), quantityType=(distance), enable=(::reflect2_strength>0)");
+	addParamInt("reflect2_bump_type", 0, -1, VRAY_BUMP_BRDF_MAP_TYPE_DESC, VRAY_BUMP_BRDF_MAP_TYPE_UIGUIDES", displayName=(Reflect 2 Bump Type), enable=(::reflect2_strength>0)");
 
-	addParamTextureFloat("sss_mix", defaultSSSMix, -1, "Mix between the diffuse component and the SSS component", "minValue=(0), maxValue=(1)");
-	addParamInt("sss_mode", defaultSSSMode, -1, "Sub-surface scattering mode (0 - diffusion; 1 - directional)", "enum=(0:Diffusion;1:Directional)");
-	addParamFloat("sss_density_scale", defaultSSSScale, -1, "Scale for the SSS effect; smaller values make light go deeper into the object");
+	addParamTextureFloat("sss_mix", defaultSSSMix, -1, "Mix between the diffuse component and the SSS component", "displayName=(SSS Mix), minValue=(0), maxValue=(1), startRollout=(SSS)");
+	addParamInt("sss_mode", defaultSSSMode, -1, "Sub-surface scattering mode (0 - diffusion; 1 - directional)", "displayName=(SSS Mode), enum=(0:Diffusion;1:Directional), enable=(::sss_mix>0)");
+	addParamFloat("sss_density_scale", defaultSSSScale, -1, "Scale for the SSS effect; smaller values make light go deeper into the object", "displayName=(SSS Density Scale), enable=(::sss_mix>0)");
 
-	addParamTextureFloat("sss1_weight", defaultSSSWeight1, -1, "Weight of the first SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
-	addParamTexture("sss1_color", defaultSSSColor1, -1, "Color of the first SSS component");
-	addParamTextureFloat("sss1_radius", defaultSSSRadius1, -1, "Radius for the first SSS component. Larger values cause light to go deeper into the surface");
+	addParamTextureFloat("sss1_weight", defaultSSSWeight1, -1, "Weight of the first SSS component", "displayName=(SSS 1 Weight), minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1), enable=(::sss_mix>0), startRollout=()");
+	addParamTexture("sss1_color", defaultSSSColor1, -1, "Color of the first SSS component", "displayName=(SSS 1 Color), enable=(::sss_mix>0, ::sss1_weight>0)");
+	addParamTextureFloat("sss1_radius", defaultSSSRadius1, -1, "Radius for the first SSS component. Larger values cause light to go deeper into the surface", "displayName=(SSS 1 Radius), quantityType=(distance), enable=(::sss_mix>0, ::sss1_weight>0)");
 
-	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
-	addParamTexture("sss2_color", defaultSSSColor2, -1, "Color of the second SSS component");
-	addParamTextureFloat("sss2_radius", defaultSSSRadius2, -1, "Radius for the second SSS component. Larger values cause light to go deeper into the surface");
+	addParamTextureFloat("sss2_weight", defaultSSSWeight2, -1, "Weight of the second SSS component", "displayName=(SSS 2 Weight), minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1), enable=(::sss_mix>0), startRollout=()");
+	addParamTexture("sss2_color", defaultSSSColor2, -1, "Color of the second SSS component", "displayName=(SSS 2 Color), enable=(::sss_mix>0, ::sss2_weight>0)");
+	addParamTextureFloat("sss2_radius", defaultSSSRadius2, -1, "Radius for the second SSS component. Larger values cause light to go deeper into the surface", "displayName=(SSS 2 Radius), quantityType=(distance), enable=(::sss_mix>0, ::sss2_weight>0)");
 
-	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component", "minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1)");
-	addParamTexture("sss3_color", defaultSSSColor3, -1, "Color of the third SSS component");
-	addParamTextureFloat("sss3_radius", defaultSSSRadius3, -1, "Radius for the third SSS component. Larger values cause light to go deeper into the surface");
+	addParamTextureFloat("sss3_weight", defaultSSSWeight3, -1, "Weight of the third SSS component", "displayName=(SSS 3 Weight), minValue=(0), maxValue=(10), softMinValue=(0), softMaxValue=(1), enable=(::sss_mix>0), startRollout=()");
+	addParamTexture("sss3_color", defaultSSSColor3, -1, "Color of the third SSS component", "displayName=(SSS 3 Color), enable=(::sss_mix>0, ::sss3_weight>0)");
+	addParamTextureFloat("sss3_radius", defaultSSSRadius3, -1, "Radius for the third SSS component. Larger values cause light to go deeper into the surface", "displayName=(SSS 3 Radius), quantityType=(distance), enable=(::sss_mix>0, ::sss3_weight>0)");
 
-	addParamInt("reflect_max_depth", defaultReflectMaxDepth, -1, "Maximum depth for reflections; set to -1 to use the global depth");
-	addParamInt("reflect_subdivs", defaultReflectSubdivs, -1, "Subdivs for sampling reflections when local subdivs are enabled");
-	addParamInt("sss_subdivs", defaultSSSSubdivs, -1, "Subdivs for sampling SSS when local subdivs are enabled");
+	addParamInt("reflect_max_depth", defaultReflectMaxDepth, -1, "Maximum depth for reflections; set to -1 to use the global depth", "startRollout=(Options), minValue=(-1)");
+	addParamInt("reflect_subdivs", defaultReflectSubdivs, -1, "Subdivs for sampling reflections when local subdivs are enabled", "quantityType=(localSubdivs), minValue=(1)");
+	addParamInt("sss_subdivs", defaultSSSSubdivs, -1, "Subdivs for sampling SSS when local subdivs are enabled", "displayName=(SSS Subdivs), quantityType=(localSubdivs), minValue=(1)");
 }
 
 BRDFAlSurface::BRDFAlSurface(VRayPluginDesc *pluginDesc):SimpleBSDF<MyBaseBSDF>(pluginDesc) {

@@ -49,14 +49,14 @@ float evalBeckmannShadowingSmithApprox(float cosThetaIV, float cosThetaOV, float
 	return evalBeckmannShadowingG1(cosThetaIV, beckmannAlpha)*evalBeckmannShadowingG1(cosThetaOV, beckmannAlpha);
 }
 
-Vector sampleBeckmannMicronormal(float uc, float vc, float beckmannAlpha) {
+simd::Vector3f sampleBeckmannMicronormal(float uc, float vc, float beckmannAlpha) {
 	float arg=-sqr(beckmannAlpha)*logf(1.0f-uc);
 	float theta=atanf(sqrtf(arg));
 	float phi=2.0f*pi()*vc;
 
 	float thetaSin=sinf(theta);
 	float thetaCos=cosf(theta);
-	return Vector(cosf(phi)*thetaSin, sinf(phi)*thetaSin, thetaCos);
+	return simd::Vector3f(cosf(phi)*thetaSin, sinf(phi)*thetaSin, thetaCos);
 }
 
 /// Given the incoming and outgoing directions the function computes the partial brdf value, the partial
@@ -72,8 +72,8 @@ Vector sampleBeckmannMicronormal(float uc, float vc, float beckmannAlpha) {
 /// @param[out] partialProb The computed probability w/o D*2*pi term.
 /// @param[out] Dval The computed microfacet distribution value.
 /// @return The partial brdf value for the given incoming and outgoing directions.
-inline float _beckmannBRDF(const Vector &viewDir, const Vector &lightDir, const Vector &halfVector, const Vector &halfVectorLocal, float roughness, const Vector &normal, float &partialProb, float &Dval) {
-	Vector incomingDir=-viewDir;
+inline float _beckmannBRDF(const simd::Vector3f &viewDir, const simd::Vector3f &lightDir, const simd::Vector3f &halfVector, const simd::Vector3f &halfVectorLocal, float roughness, const simd::Vector3f &normal, float &partialProb, float &Dval) {
+	simd::Vector3f incomingDir=-viewDir;
 	
 	float cosIN=fabsf(dotf(incomingDir, normal));
 	float cosON=dotf(lightDir, normal);
@@ -83,12 +83,12 @@ inline float _beckmannBRDF(const Vector &viewDir, const Vector &lightDir, const 
 	
 	float partialBrdf=0.f;
 	
-	Dval=evalBeckmannMicrofacetDistribution(halfVectorLocal.z, roughness);
+	Dval=evalBeckmannMicrofacetDistribution(halfVectorLocal.z(), roughness);
 	partialBrdf = 0.25f * 
 		evalBeckmannShadowingSmithApprox(cosIN, cosON, roughness)
 		/cosIN;
 
-	float hn=halfVectorLocal.z; //*/ dotf(halfVector, normal);
+	float hn=halfVectorLocal.z(); //*/ dotf(halfVector, normal);
 	if (hn>0.0f) {
 		float ho=dotf(halfVector, lightDir);
 		partialProb=ho>0.0f? 0.25f/ho : 0.0f;
@@ -97,9 +97,9 @@ inline float _beckmannBRDF(const Vector &viewDir, const Vector &lightDir, const 
 	return partialBrdf;
 }
 
-float VUtils::beckmannBRDF(const Vector &viewDir, const Vector &lightDir, float roughness, const Vector &normal, const Matrix &nm, const Matrix &inm, float &prob) {
-	Vector halfVector=normalize0(lightDir-viewDir);
-	Vector halfVectorLocal=normalize0(inm*halfVector);
+float VUtils::beckmannBRDF3f(const simd::Vector3f &viewDir, const simd::Vector3f &lightDir, float roughness, const simd::Vector3f &normal, const simd::Matrix3x3f &nm, const simd::Matrix3x3f &inm, float &prob) {
+	simd::Vector3f halfVector=simd::normalize0(lightDir-viewDir);
+	simd::Vector3f halfVectorLocal=simd::normalize0(inm*halfVector);
 
 	float Dval=0.0f;
 	float partialProb=0.0f;
@@ -110,7 +110,7 @@ float VUtils::beckmannBRDF(const Vector &viewDir, const Vector &lightDir, float 
 	prob=partialProb*Dval*2.0f*pi();
 	
 	// Compute the length of the half-vector in local space and correct probabilities for anisotropy
-	Vector microNormal=nm*halfVectorLocal;
+	simd::Vector3f microNormal=nm*halfVectorLocal;
 	float L2=microNormal.lengthSqr();
 	float L=sqrtf(L2);
 	prob*=L*L2;
@@ -118,21 +118,21 @@ float VUtils::beckmannBRDF(const Vector &viewDir, const Vector &lightDir, float 
 	return fullBrdf;
 }
 
-Vector VUtils::beckmannDir(float u, float v, float roughness, const Vector &viewDir, const Matrix &nm, float &prob, float &brdfDivByProb) {
-	Vector microNormalLocal=sampleBeckmannMicronormal(u, v, roughness);
-	if (microNormalLocal.z<=0.0f) {
+simd::Vector3f VUtils::beckmannDir3f(float u, float v, float roughness, const simd::Vector3f &viewDir, const simd::Matrix3x3f &nm, float &prob, float &brdfDivByProb) {
+	simd::Vector3f microNormalLocal=sampleBeckmannMicronormal(u, v, roughness);
+	if (microNormalLocal.z()<=0.0f) {
 		prob=0.0f;
 		return nm[2];
 	}
 
-	Vector microNormal=nm*microNormalLocal;
+	simd::Vector3f microNormal=nm*microNormalLocal;
 
 	// Compute and keep the length of the half-vector in local space; needed for anisotropy correction
 	float L2=microNormal.lengthSqr();
 	float L=sqrtf(L2);
 	microNormal/=L;
 	
-	Vector res=getReflectDir(viewDir, microNormal);
+	simd::Vector3f res=getReflectDir3f(viewDir, microNormal);
 
 	float Dval=0.0f;
 	float partialProb=0.0f;
@@ -144,10 +144,10 @@ Vector VUtils::beckmannDir(float u, float v, float roughness, const Vector &view
 	return res;
 }
 
-float VUtils::beckmannDirProb(const Vector &dir, float roughness, const Vector &normal, const Vector &viewDir, const Matrix &inm) {
+float VUtils::beckmannDirProb3f(const simd::Vector3f &dir, float roughness, const simd::Vector3f &normal, const simd::Vector3f &viewDir, const simd::Matrix3x3f &inm) {
 	float prob=0.0f;
 
-	Vector h=normalize(dir-viewDir);
+	simd::Vector3f h=normalize(dir-viewDir);
 	float Dval=evalBeckmannMicrofacetDistribution(dotf(h, normal), roughness);
 	float hn=dotf(h, normal);
 	if (hn>0.0f) {

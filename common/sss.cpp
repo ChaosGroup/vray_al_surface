@@ -1,5 +1,6 @@
 #include "sss.h"
 #include "vraydmcsampler.h"
+#include "vraytexutils.h"
 
 const float ScatteringProfileDirectional::eta(1.3f);
 const float ScatteringProfileDirectional::C_phi(0.175626f);
@@ -53,7 +54,6 @@ ScatteringProfileDirectional::ScatteringProfileDirectional(float Rd, float scale
 	albedo = _albedo_lut[idx];
 	vassert(albedo > 1e-6f);
 	vassert(albedo < 1.0f - 1e-6f);
-	// printf("Rd: %f - albedo: %f\n", Rd, albedo);
 }
 
 ScatteringProfileDirectional::ScatteringProfileDirectional(float sigma_s, float sigma_a, float g)
@@ -80,7 +80,6 @@ ScatteringProfileDirectional::ScatteringProfileDirectional(float sigma_s, float 
 
 	const float maxdist = zr * SSS_MAX_RADIUS;
 	albedo = 1.0f;
-	// printf("FUCK\n");
 }
 
 void matchNormals(const VR::Vector Nref, VR::Vector &Nmatch)
@@ -148,50 +147,33 @@ private:
 	VR::Color diffuse;
 };
 
-void alsIrradiateSample(
+int alsIrradiateSample(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
-	const VR::Color &diffuse
+	const VR::Color &diffuse,
+	VR::ShadeResult &result
 )
 {
 	if (dmd->sss_depth >= SSS_MAX_SAMPLES)
-		return;
+		return -1;
 	
-	//void *orig_op;
-	//AiStateGetMsgPtr("als_sss_op", &orig_op);
-	//
-	//int als_context = ALS_CONTEXT_NONE;
-	//AiStateGetMsgInt("als_context", &als_context);
+	// Check if this hit point needs to be considered.
+	if (rc.parent) {
+		int invertNormal=false;
+		int considerPoint=VR::considerPointForSSS(*rc.parent, rc.rayresult, dmd->sssSurfaceID, invertNormal);
+		if (!considerPoint)
+			return -1;
 
-	//AtRay ray;
-	//AtScrSample scrs;
-
-	// There are a few contexts in which we can be called here:
-	// 1) Intersecting same object with same shader
-	// 2) Intersecting same object with different shader
-	// 3) Intersecting different object with same shader
-	// 4) Intersecting different object with different shader
-	// 5) Called from an indirect ray from another shader while tracing for SSS
-	// 2 and 4 could possibly be because we're running from a layer shader. if we try to evaluate in that context we will simply crash
-	// 5 will cause fireflies so we need to detect this and return
-
-	// just return if this is a different object.
-	// More elaborate checks may be needed; see VRayFastSSS2 source, considerPointForSSS().
-	if (rc.parent && rc.rayresult.sb != rc.parent->rayresult.sb)
-	{
-		return;
+		if (invertNormal) {
+			rc.flipNormal();
+			rc.rayresult.normalFlipped=false;
+		}
 	}
-
-	// if we're in a layered context and running a different shader from the one that's tracing for sss, just return to let the other shader handle it
-	//if (als_context == ALS_CONTEXT_LAYER && (dmd->shader_orig != sg->shader))
-	//{
-	//    return;
-	//}
 
 	DiffusionSample& samp = dmd->samples[dmd->sss_depth];
 	samp.S = (rc.rayresult.wpoint - dmd->Po);
 	samp.r = VR::length(samp.S);
-	samp.Rd.set(0.0f, 0.0f, 0.0f);
+	result.makeZero();
 
 	// The original alSurface line below seems wrong, but looks like has no effect on Arnold;
 	// we probably only want to subtract just the distance from the previous SSS hit to this one.
@@ -200,77 +182,30 @@ void alsIrradiateSample(
 	// dmd->maxdist -= samp.r;
 	dmd->maxdist -= float(rc.rayresult.wpointCoeff-rc.rayparams.mint);
 
-	// if we're not using trace sets to explicitly define what objects we want to trace against, then assume we only want to trace against ourselves
-	// or if we're not doing sss in this shader, just continue the ray
-	/*
-	if ((!trace_set_enabled && orig_op != sg->Op) || sssMix == 0.0f)
-	{
-		if (dmd->sss_depth < SSS_MAX_SAMPLES && dmd->maxdist > 0.0f)
-		{
-			AiMakeRay(&ray, AI_RAY_SUBSURFACE, &sg->P, &sg->Rd, dmd->maxdist, sg);
-			AiTrace(&ray, &scrs);
-		}
-		return;
-	}*/
-
-	// AiStateSetMsgInt("als_raytype", ALS_RAY_UNDEFINED);
-	
-	// assert(sg->P != dmd->Po);
 	// put normals the right way round
 	VR::Vector Nref = rc.rayresult.normal;
 	matchNormals(Nref, rc.rayresult.gnormal);
 	matchNormals(Nref, rc.rayresult.origNormal);
-
-	// void* brdf_data = AiOrenNayarMISCreateData(sg, 0.0f);
-	// AiLightsPrepare(sg);
-	VR::Color result_direct(0.0f, 0.0f, 0.0f);
 
 	VR::Color Rnond(0.0f, 0.0f, 0.0f);
 	bool directional = dmd->directional;
 
 	// In V-Ray, always compute dipole diffuse reflectance; we use this as approximation
 	// when V-Ray needs to know the diffuse surface color.
-	for (int c = 0; c < dmd->numComponents; ++c)
-	{
+	for (int c = 0; c < dmd->numComponents; ++c) {
 		Rnond += directionalDipole(rc.rayresult.wpoint, rc.rayresult.normal, dmd->Po, dmd->No, rc.rayresult.normal, dmd->No, dmd->sp[c]) * dmd->weights[c];
 	}
 
-	// Calculate the direct lighting.
+	// Calculate the direct lighting. Do this in the result fragment that we are passed in
+	// so that we can capture any lighting render elements.
 	ALSIrradiateBRDF brdf(dmd, Rnond, samp, diffuse);
-	result_direct=rc.vray->getSequenceData().directLightManager->eval(rc, brdf);
-
-	/*
-	while (AiLightsGetSample(sg))
-	{
-		// get the group assigned to this light from the hash table using the light's pointer
-		int lightGroup = lightGroupMap[sg->Lp];
-		float diffuse_strength = AiLightGetDiffuse(sg->Lp);
-
-		// Does not using MIS here get us anything?
-		// AtRGB L = AiEvaluateLightSample(sg, brdf_data, AiOrenNayarMISSample, AiOrenNayarMISBRDF, AiOrenNayarMISPDF);
-		VR::Color L = sg->Li * VR::Max(VR::dotf(sg->Ld, sg->N), 0.0f) * (1.0f/VR::pi()) * sg->we * diffuse_strength;
-		if (L.isBlack()) continue;
-		if (directional)
-		{
-			VR::Color R(0.0f, 0.0f, 0.0f);
-			for (int c=0; c < dmd->numComponents; ++c)
-			{
-				if (samp.r < dmd->sp[c].safe_radius)
-					R += directionalDipole(sg->P, sg->N, dmd->Po, dmd->No, sg->N, dmd->No, dmd->sp[c]) * dmd->weights[c];
-				else
-					R += directionalDipole(sg->P, sg->N, dmd->Po, dmd->No, sg->Ld, dmd->wo, dmd->sp[c]) * dmd->weights[c]; 
-			}
-			L *= R;
-			result_direct += L;
-			vassert(VR::fastfinite(result_direct.sum()));
-		}
-		else
-		{
-			L *= Rnond;
-			result_direct += L;
-			vassert(VR::fastfinite(result_direct.sum()));
-		}
-	}*/
+	VR::ShadeResult origResult=rc.mtlresult;
+	rc.mtlresult=result;
+	
+	rc.mtlresult.color=rc.vray->getSequenceData().directLightManager->eval(rc, brdf);
+	
+	result=rc.mtlresult;
+	rc.mtlresult=origResult;
 
 	// Calculate the indirect lighting if GI in V-Ray is enabled.
 	VR::Color result_indirect(0.0f, 0.0f, 0.0f);
@@ -281,8 +216,7 @@ void alsIrradiateSample(
 
 		VR::VRayContext &nrc=rc.newSpawnContext(0, VR::Color(1.0f, 1.0f, 1.0f), VR::RT_INDIRECT | VR::RT_ENVIRONMENT, rc.rayresult.gnormal);
 
-		for (int i=0; i<1; i++)
-		{
+		for (int i=0; i<1; i++) {
 			float samples[2];
 			samples[0]=nrc.getDMCValue();
 			samples[1]=nrc.getDMCValue();
@@ -304,19 +238,15 @@ void alsIrradiateSample(
 			VR::Color giColor=nrc.traceCurrentRay();
 
 			VR::Color f;
-			if (directional)
-			{
+			if (directional) {
 				VR::Color R(0.0f, 0.0f, 0.0f);
-				for (int c = 0; c < dmd->numComponents; ++c)
-				{
+				for (int c = 0; c < dmd->numComponents; ++c) {
 					R += directionalDipole(rc.rayresult.wpoint, rc.rayresult.normal, dmd->Po, dmd->No, dir, dmd->wo, dmd->sp[c]) * dmd->weights[c];
 				}
 				f = R;
 				result_indirect += giColor * R;
 				vassert(VR::fastfinite(result_indirect.sum()));
-			}
-			else
-			{
+			} else {
 				f = Rnond;
 				result_indirect += giColor * Rnond;
 				vassert(VR::fastfinite(result_indirect.sum()));
@@ -325,34 +255,45 @@ void alsIrradiateSample(
 		nrc.releaseContext();
 	}
 
-	// TODO: this is guaranteed to be 1 in every case, right?
-	// result_indirect *= AiSamplerGetSampleInvCount(sampit);
-	samp.Rd = result_direct + result_indirect;
+	result.color+=result_indirect;
 
-	vassert(VR::fastfinite(samp.Rd.sum()));
+	// Store the GI in its designated render element; we want all light select elements + GI to give the beauty result.
+	if (result.fragment) result.fragment->setChannelDataByAlias(REG_CHAN_VFB_GI, &result_indirect);
 
+	vassert(VR::fastfinite(result.color.sum()));
    
 	samp.N = rc.rayresult.normal;
 	samp.Ng = rc.rayresult.gnormal;
 	samp.P = rc.rayresult.wpoint;
 
-	dmd->sss_depth++;
-
-	//AiStateSetMsgInt("als_raytype", ALS_RAY_SSS);
-	//
-	//if (dmd->sss_depth < SSS_MAX_SAMPLES && dmd->maxdist > 0.0f)
-	//{
-	//    
-	//    AiMakeRay(&ray, AI_RAY_SUBSURFACE, &sg->P, &sg->Rd, dmd->maxdist, sg);
-	//    AiTrace(&ray, &scrs);
-	//}
+	return (dmd->sss_depth++);
 }
 
 struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
-	MultipleScatteringSampler(const VR::VRayContext &rc, DirectionalMessageData *dmd, const VR::Color &diffuseColor)
-		:dmd(dmd), diffuse(diffuseColor)
+	MultipleScatteringSampler(const VR::VRayContext &rc, DirectionalMessageData *dmd, const VR::Color &diffuseColor, VR::ShadeResult &sssResult)
+		: dmd(dmd), diffuse(diffuseColor), result(sssResult)
 	{
 		VR::computeTangentVectors(rc.rayresult.gnormal, U, V);
+
+		tempResult.fragment=NULL;
+		fragman=NULL;
+		if (result.fragment) {
+			fragman=rc.fragmentList->getFragmentManager();
+			tempResult.fragment=fragman->newFragment();
+		}
+	}
+
+	void freeMem(void) {
+		if (tempResult.fragment) {
+			fragman->deleteFragment(tempResult.fragment);
+			tempResult.fragment=NULL;
+			fragman=NULL;
+		}
+	}
+
+	~MultipleScatteringSampler(void) {
+		freeMem();
+		vassert(tempResult.fragment==NULL);
 	}
 
 	VR::Color sampleColor(const VR::VRayContext &rc, VR::VRayContext &nrc, float uc, VR::ValidType &valid) VRAY_OVERRIDE {
@@ -364,8 +305,7 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 		float c_axis = 1.0f, c_axis_1, c_axis_2;
 		float axes_c[3] = {0.25f, 0.25f, 0.5f};
 		int chosen_axis;
-		if (samples[0] < 0.5f)
-		{
+		if (samples[0] < 0.5f) {
 			chosen_axis = 2;
 			samples[0] *= 2.0f;
 			c_axis = 0.5f;
@@ -381,9 +321,7 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 
 			Usss_2 = U;
 			Vsss_2 = rc.rayresult.gnormal;
-		}
-		else if (samples[0] < 0.75f)
-		{
+		} else if (samples[0] < 0.75f) {
 			chosen_axis = 0;
 			samples[0] = (samples[0] - 0.5f) * 4.0f;
 			c_axis = 0.25f;
@@ -399,9 +337,7 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 
 			Usss_2 = U;
 			Vsss_2 = rc.rayresult.gnormal;
-		}
-		else
-		{
+		} else {
 			chosen_axis = 1;
 			samples[0] = (1.0f-samples[0])* 4.0f;
 			c_axis = 0.25f;
@@ -422,8 +358,7 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 		int numComponents=dmd->numComponents;
 
 		float r_disk[3];
-		for (int i=0; i < numComponents; ++i)
-		{
+		for (int i=0; i < numComponents; ++i) {
 			if (samples[1] < comp_cdf[i+1])
 			{
 				samples[1] -= comp_cdf[i];
@@ -459,6 +394,9 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 		VR::IntersectionData isData;
 		int transpIndex=0;
 		float step=1e-6f;
+		
+		tempResult.makeZero();
+
 		while (dmd->sss_depth<SSS_MAX_SAMPLES && dmd->maxdist>0.0f) {
 			isData.clear();
 			int res=nrc.vray->findIntersection(nrc, &isData);
@@ -466,20 +404,9 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 
 			// Shade the hit (result is stored in next element of the samples array in the dmd structure)
 			nrc.setRayResult(res, &isData, transpIndex++);
-			alsIrradiateSample(nrc, dmd, diffuse);
+			int i=alsIrradiateSample(nrc, dmd, diffuse, tempResult);
 
-			// Continue the ray making sure we don't get caught between two surfaces.
-			nrc.rayparams.skipTag=nrc.rayresult.skipTag;
-			if (fabs(nrc.rayparams.mint-nrc.rayresult.wpointCoeff)<1e-12f) step*=2.0f;
-			else step=1e-6f;
-			nrc.rayparams.mint=nrc.rayresult.wpointCoeff+nrc.rayresult.wpointCoeff*step;
-		}
-
-
-		// Process all the hits and accumulate SSS result
-		VR::Color result_sss(0.0f, 0.0f, 0.0f);
-		for (int i=0; i<dmd->sss_depth; i++) {
-			if (!dmd->samples[i].Rd.isBlack()) {
+			if (i>=0 && !tempResult.color.isBlack()) {
 				float geom[3];
 				
 				geom[0] = fabsf(VR::dotf(dmd->samples[i].Ng, Wsss));
@@ -505,14 +432,25 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 
 				if (pdf_sum!=0.0f) {
 					float f = r_disk[0] / pdf_sum;
-					result_sss += dmd->samples[i].Rd * f;
+					tempResult.multiply(f);
+					result.add(tempResult, VR::fbm_normal);
 				}
 			}
 
-			vassert(VR::fastfinite(result_sss.sum()));
+			// Continue the ray making sure we don't get caught between two surfaces.
+			nrc.rayparams.skipTag=nrc.rayresult.skipTag;
+			if (fabs(nrc.rayparams.mint-nrc.rayresult.wpointCoeff)<1e-12f) step*=2.0f;
+			else step=1e-6f;
+			nrc.rayparams.mint=nrc.rayresult.wpointCoeff+nrc.rayresult.wpointCoeff*step;
+
+			vassert(VR::fastfinite(result.color.sum()));
 		}
 
-		return result_sss;
+		return result.color;
+	}
+
+	void multResult(float m) VRAY_OVERRIDE {
+		result.multiply(VR::Color(m), VR::fbm_normal);
 	}
 
 	int computePDFs(int numComponents) {
@@ -558,50 +496,57 @@ struct MultipleScatteringSampler: VR::AdaptiveColorSampler {
 	}
 
 protected:
+	VR::FragmentManager *fragman;
 	VR::Vector U, V;
 	DirectionalMessageData *dmd;
 	float comp_pdf[9];
 	float comp_cdf[9+1];
 	float R_max;
 	VR::Color diffuse;
+	VR::ShadeResult &result;
+	VR::ShadeResult tempResult; // The illumination result for a single hit point
 };
 
-VR::Color alsDiffusion(
+void alsDiffusion(
 	VR::VRayContext &rc,
 	DirectionalMessageData *dmd,
 	bool directional,
 	int numComponents,
 	float sssMix,
 	const VR::Color &diffuseColor,
-	int nsamples
+	int nsamples,
+	VR::ShadeResult &result
 )
 {
 	VR::Color multResult=sssMix*diffuseColor;
 
-	MultipleScatteringSampler multiScatterSampler(rc, dmd, multResult);
+	MultipleScatteringSampler multiScatterSampler(rc, dmd, multResult, result);
 	numComponents=multiScatterSampler.computePDFs(numComponents);
 
 	dmd->wo = -rc.rayparams.viewDir;
 	dmd->numComponents = numComponents;
 	dmd->directional = directional;
+	dmd->sssSurfaceID = VR::getSssSurfaceID(rc);
 	
 	VR::VRayContext &nrc=rc.newSpawnContext(0, multResult, 0, rc.rayresult.gnormal);
 
 	if (rc.rayparams.currentPass==RPASS_GI) nsamples=0;
 
-	VR::Color result_sss=multiScatterSampler.sample(rc, nrc, nsamples, 0x84323);
-	vassert(VR::fastfinite(result_sss.sum()));
+	multiScatterSampler.sample(rc, nrc, nsamples, 0x84323);
+	vassert(VR::fastfinite(result.color.sum()));
 
 	nrc.releaseContext();
 
-	VR::Color norm_factor(0.0f, 0.0f, 0.0f);
-	for (int c=0; c < numComponents; ++c)
-	{
+	VR::Color norm_factor(0.0f);
+	for (int c=0; c < numComponents; ++c) {
 		norm_factor += dmd->sp[c].albedo * dmd->weights[c];
 	}
 
-	result_sss /= norm_factor;
+	if (norm_factor.sum()<1e-6f) {
+		result.makeZero();
+	} else {
+		result*=(1.0f/norm_factor);
+	}
 
-	vassert(VR::fastfinite(result_sss.sum()));
-	return result_sss;
+	vassert(VR::fastfinite(result.color.sum()));
 }

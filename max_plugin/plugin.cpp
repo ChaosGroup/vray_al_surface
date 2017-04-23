@@ -34,7 +34,7 @@ MYDLLEXPORT int LibNumberClasses(void) { return 1; }
 
 MYDLLEXPORT ClassDesc* LibClassDesc(int i) {
 	switch(i) {
-		case 0: return GetSkeletonMtlDesc();
+		case 0: return VRayALMaterial::GetSkeletonMtlDesc();
 		default: return 0;
 	}
 }

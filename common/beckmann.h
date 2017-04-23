@@ -2,6 +2,7 @@
 #define __BECKMANN_H__
 
 #include "utils.h"
+#include "matrix_simd.hpp"
 
 namespace VUtils {
 
@@ -14,7 +15,7 @@ namespace VUtils {
 /// @param[in] inm World to local space transformation matrix.
 /// @param[out] prob The probability to reflect exactly in the given outgoing direction
 /// @return The brdf value for the given incoming and outgoing direction
-float beckmannBRDF(const Vector &viewDir, const Vector &lightDir, float roughness, const Vector &normal, const Matrix &nm, const Matrix &inm, float &prob);
+float beckmannBRDF3f(const simd::Vector3f &viewDir, const simd::Vector3f &lightDir, float roughness, const simd::Vector3f &normal, const simd::Matrix3x3f &nm, const simd::Matrix3x3f &inm, float &prob);
 
 /// The function generates a reflection/outgoing direction given the incoming direction, the random
 /// numbers and the Beckmann importance sampling equations. It also computes the probability and the 
@@ -26,7 +27,7 @@ float beckmannBRDF(const Vector &viewDir, const Vector &lightDir, float roughnes
 /// @param[out] prob The probability of the generated direction.
 /// @param[out] brdfDivByProb The computed brdf value divided by the probability.
 /// @return A reflection vector generated using the incoming direction, two random numbers and ggx importance sampling equations
-Vector beckmannDir(float u, float v, float roughness, const Vector &viewDir, const Matrix &nm, float &prob, float &brdfDivByProb);
+simd::Vector3f beckmannDir3f(float u, float v, float roughness, const simd::Vector3f &viewDir, const simd::Matrix3x3f &nm, float &prob, float &brdfDivByProb);
 
 /// The functions computes the probability for a ray coming from direction viewDir to be reflected exactly in direction dir by beckmannDir().
 /// @param[in] dir The direction of the outgoing/light direction.
@@ -35,7 +36,7 @@ Vector beckmannDir(float u, float v, float roughness, const Vector &viewDir, con
 /// @param[in] viewDir The direction of the incoming/camera direction.
 /// @param[in] inm World to local space transformation matrix.
 /// @return The probability for a ray coming from direction viewDir to be reflected exactly in direction dir.
-float beckmannDirProb(const Vector &dir, float roughness, const Vector &normal, const Vector &viewDir, const Matrix &inm);
+float beckmannDirProb3f(const simd::Vector3f &dir, float roughness, const simd::Vector3f &normal, const simd::Vector3f &viewDir, const simd::Matrix3x3f &inm);
 
 } // namespace VUtils
 
